@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@uchimise/tokens": ["./packages/tokens/src/index.ts"],
+      "@uchimise/ui": ["./packages/ui/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".turbo"]
+}

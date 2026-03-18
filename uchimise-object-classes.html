@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uchimise — オブジェクトクラス定義 v1.0</title>
+  <style>
+    :root {
+      --ivory: #FFF8EE;
+      --ochre: #EF9F27;
+      --espresso: #2A1600;
+      --goldenrod: #C8A900;
+      --sand: #E8D5B0;
+      --cream: #F5EDDF;
+      --warm-gray: #8B7355;
+      --sage: #7A9E5A;
+      --rust: #B84040;
+      --mist: #D4B896;
+      --complement: #4A7B9D;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ivory);
+      color: var(--espresso);
+      font-family: -apple-system, 'Helvetica Neue', 'Hiragino Sans', Arial, sans-serif;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    header {
+      background: var(--espresso);
+      color: var(--ivory);
+      padding: 24px 48px;
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      border-bottom: 3px solid var(--ochre);
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--ochre); letter-spacing: 0.01em; }
+    header .meta { font-size: 13px; color: var(--sand); opacity: 0.85; }
+    .container { max-width: 1440px; margin: 0 auto; padding: 48px; }
+
+    /* TOC */
+    .toc {
+      background: white;
+      border: 1px solid var(--sand);
+      border-radius: 12px;
+      padding: 24px 32px;
+      margin-bottom: 48px;
+    }
+    .toc h2 { font-size: 14px; font-weight: 700; color: var(--espresso); margin-bottom: 12px; }
+    .toc-domains { display: flex; flex-wrap: wrap; gap: 8px; }
+    .toc-domain {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--cream); border: 1px solid var(--sand);
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 12px; font-weight: 600; cursor: default;
+    }
+    .toc-domain .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Domain section */
+    .domain-section { margin-bottom: 72px; }
+    .domain-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 28px; padding-bottom: 12px;
+      border-bottom: 3px solid var(--ochre);
+    }
+    .domain-icon { font-size: 22px; }
+    .domain-title { font-size: 18px; font-weight: 700; color: var(--espresso); }
+    .domain-desc { font-size: 12px; color: var(--warm-gray); margin-top: 2px; }
+
+    /* Entity card */
+    .entity-grid { display: flex; flex-direction: column; gap: 32px; }
+    .entity-card {
+      background: white;
+      border: 1px solid var(--sand);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .entity-card-header {
+      background: var(--espresso);
+      color: var(--ivory);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .entity-name { font-size: 15px; font-weight: 700; font-family: 'SF Mono', 'Courier New', monospace; color: var(--ochre); }
+    .entity-desc { font-size: 12px; color: var(--mist); margin-top: 2px; }
+    .entity-badges { display: flex; gap: 6px; margin-left: auto; }
+
+    .entity-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .entity-body > * { padding: 20px 24px; }
+    .entity-body > *:nth-child(odd) { border-right: 1px solid var(--sand); }
+    .entity-body > *:nth-child(n+3) { border-top: 1px solid var(--sand); }
+
+    /* Section heading within card */
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--warm-gray);
+      margin-bottom: 12px;
+    }
+
+    /* Properties table */
+    .props-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .props-table th {
+      text-align: left; padding: 6px 8px;
+      background: var(--cream); color: var(--warm-gray);
+      font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--sand);
+    }
+    .props-table td { padding: 7px 8px; border-bottom: 1px solid #f0e8d8; vertical-align: top; }
+    .props-table tr:last-child td { border-bottom: none; }
+    .prop-name { font-family: 'SF Mono', 'Courier New', monospace; color: var(--espresso); font-weight: 600; font-size: 11.5px; }
+    .prop-type { color: var(--complement); font-family: monospace; font-size: 11px; }
+    .prop-req { font-size: 10px; padding: 1px 6px; border-radius: 100px; font-weight: 600; }
+    .req-yes { background: #fee2e2; color: #991b1b; }
+    .req-opt { background: #f0fdf4; color: #166534; }
+    .prop-desc { color: var(--warm-gray); font-size: 11.5px; }
+
+    /* States */
+    .states-list { display: flex; flex-direction: column; gap: 6px; }
+    .state-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 12px;
+    }
+    .state-badge {
+      flex-shrink: 0; padding: 2px 9px; border-radius: 100px;
+      font-size: 11px; font-weight: 700; font-family: monospace;
+    }
+    .state-pending   { background: #fef9c3; color: #713f12; }
+    .state-active    { background: #dbeafe; color: #1e40af; }
+    .state-done      { background: #dcfce7; color: #15803d; }
+    .state-failed    { background: #fee2e2; color: #991b1b; }
+    .state-neutral   { background: var(--cream); color: var(--espresso); }
+    .state-desc { color: var(--warm-gray); font-size: 11.5px; margin-top: 1px; }
+    .state-arrow { color: var(--ochre); font-weight: 700; margin: 0 4px; }
+
+    .state-flow {
+      margin-top: 12px; font-size: 11px; color: var(--warm-gray);
+      background: var(--cream); border-radius: 8px; padding: 10px 12px;
+      font-family: monospace; line-height: 1.8;
+    }
+
+    /* Relationships */
+    .rel-list { display: flex; flex-direction: column; gap: 6px; }
+    .rel-item { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+    .rel-type {
+      flex-shrink: 0; font-size: 10px; font-weight: 700;
+      padding: 1px 7px; border-radius: 100px;
+      background: #ede9fe; color: #5b21b6; font-family: monospace;
+    }
+    .rel-target { font-family: monospace; color: var(--espresso); font-weight: 600; font-size: 12px; }
+    .rel-note { color: var(--warm-gray); font-size: 11.5px; }
+
+    /* UI mapping */
+    .ui-list { display: flex; flex-direction: column; gap: 8px; }
+    .ui-item { display: flex; flex-direction: column; gap: 3px; }
+    .ui-screen { font-size: 12px; font-weight: 700; color: var(--espresso); }
+    .ui-components { font-size: 11.5px; color: var(--warm-gray); }
+    .ui-tab {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 1px 7px; border-radius: 100px; margin-right: 4px;
+    }
+    .tab-plan    { background: #dbeafe; color: #1e40af; }
+    .tab-disc    { background: #fef9c3; color: #713f12; }
+    .tab-me      { background: #dcfce7; color: #15803d; }
+    .tab-cross   { background: #f3e8ff; color: #5b21b6; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-new      { background: #dcfce7; color: #15803d; }
+    .badge-refactor { background: #fef9c3; color: #92400e; }
+    .badge-v15      { background: #f3e8ff; color: #7c3aed; }
+    .badge-mvp      { background: #fee2e2; color: #991b1b; }
+    .badge-v10      { background: #dbeafe; color: #1e40af; }
+    .badge-existing { background: #f1f5f9; color: #475569; }
+
+    /* Full-width section */
+    .full-width {
+      grid-column: 1 / -1 !important;
+      border-right: none !important;
+    }
+
+    footer {
+      background: var(--espresso); color: var(--sand);
+      text-align: center; padding: 24px; font-size: 12px; margin-top: 80px;
+    }
+    footer span { color: var(--ochre); }
+
+    @media (max-width: 900px) {
+      .entity-body { grid-template-columns: 1fr; }
+      .entity-body > *:nth-child(odd) { border-right: none; border-bottom: 1px solid var(--sand); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Uchimise — オブジェクトクラス定義</h1>
+  <div class="meta">v1.0 · 2026年3月 · Step 2: プロパティ・状態・関係・UI対応</div>
+</header>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>ドメイン一覧</h2>
+    <div class="toc-domains">
+      <div class="toc-domain"><div class="dot" style="background:#6366f1"></div>ユーザー (User)</div>
+      <div class="toc-domain"><div class="dot" style="background:#f59e0b"></div>クリエイター (Creator)</div>
+      <div class="toc-domain"><div class="dot" style="background:#ef4444"></div>レシピ (Recipe)</div>
+      <div class="toc-domain"><div class="dot" style="background:#22c55e"></div>整理 (Organization)</div>
+      <div class="toc-domain"><div class="dot" style="background:#3b82f6"></div>献立 (Meal Plan)</div>
+      <div class="toc-domain"><div class="dot" style="background:#f97316"></div>調理 (Cooking)</div>
+      <div class="toc-domain"><div class="dot" style="background:#8b5cf6"></div>発見 (Discovery)</div>
+      <div class="toc-domain"><div class="dot" style="background:#10b981"></div>成長 (Growth) v1.5</div>
+      <div class="toc-domain"><div class="dot" style="background:#64748b"></div>食材管理 (Pantry) v1.5</div>
+    </div>
+  </div>
+
+
+  <!-- ==================== USER DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🙋</div>
+      <div>
+        <div class="domain-title">ユーザー (User Domain)</div>
+        <div class="domain-desc">認証・嗜好設定・フォロー関係を管理する起点ドメイン</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- User -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">users</div>
+            <div class="entity-desc">アプリの主体。すべてのユーザーデータの起点</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-existing">✅ 既存</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">Supabase Auth が発行</td></tr>
+                <tr><td class="prop-name">email</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">認証用メールアドレス</td></tr>
+                <tr><td class="prop-name">display_name</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">自分タブ・挨拶表示に使用</td></tr>
+                <tr><td class="prop-name">created_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">アカウント作成日時</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>自分タブ ホーム</div>
+                <div class="ui-components">display_name 表示、CookingRecord 件数</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">全タブ</span>RLS ポリシー</div>
+                <div class="ui-components">全テーブルで user_id = auth.uid() 制約</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">has one</span><span class="rel-target">user_preferences</span><span class="rel-note">嗜好設定（1:1）</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">recipes</span><span class="rel-note">保存したレシピ</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">collections</span><span class="rel-note">作成したコレクション</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">cooking_records</span><span class="rel-note">調理記録</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">meal_plans</span><span class="rel-note">週次献立計画</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">user_follows_creator</span><span class="rel-note">フォロー中クリエイター</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">備考</div>
+            <p style="font-size:12px;color:var(--warm-gray);">Supabase Auth (auth.users) と連動。Apple Sign-In / Google OAuth 2.0 対応。display_name は初回オンボーディング画面で設定する。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- UserPreference -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">user_preferences</div>
+            <div class="entity-desc">AIパーソナライズの入力値。献立提案・発見フィードに影響</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v10">v1.0</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">users.id (UNIQUE)</td></tr>
+                <tr><td class="prop-name">dietary_restrictions</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">vegan / gluten_free / dairy_free など</td></tr>
+                <tr><td class="prop-name">dislikes</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">嫌いな食材名（自由記述）</td></tr>
+                <tr><td class="prop-name">skill_level</td><td class="prop-type">int 1-5</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">1=初心者 〜 5=上級者</td></tr>
+                <tr><td class="prop-name">max_cook_time_minutes</td><td class="prop-type">int</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">調理可能な最大時間（分）</td></tr>
+                <tr><td class="prop-name">discovery_appetite</td><td class="prop-type">int 1-5</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">1=慣れ親しんだもの優先 〜 5=新発見積極</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>設定 → 好み設定</div>
+                <div class="ui-components">dietary_restrictions チェックボックス、dislikes タグ入力、skill_level スライダー</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>AI献立提案（影響元）</div>
+                <div class="ui-components">max_cook_time / dietary_restrictions → 提案フィルタリングに使用</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>フィード（影響元）</div>
+                <div class="ui-components">discovery_appetite → For youアルゴリズムのパラメータ</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span><span class="rel-note">ユーザー1人に1レコード</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">備考</div>
+            <p style="font-size:12px;color:var(--warm-gray);">初回オンボーディングでの設定は任意。未設定の場合はデフォルト推薦を使用。dietary_restrictions は将来的にマスタテーブル化を検討。</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== CREATOR DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🎬</div>
+      <div>
+        <div class="domain-title">クリエイター (Creator Domain)</div>
+        <div class="domain-desc">SNSコンテンツの発信者。recipes・feed_content の参照元</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- Creator -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">creators</div>
+            <div class="entity-desc">YouTube / Instagram のコンテンツ作成者。recipes.creator_name(text) から昇格</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">表示名（チャンネル名）</td></tr>
+                <tr><td class="prop-name">platform</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">youtube / instagram / tiktok</td></tr>
+                <tr><td class="prop-name">platform_channel_id</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">YouTube channel ID など</td></tr>
+                <tr><td class="prop-name">profile_image_url</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">アバター画像URL</td></tr>
+                <tr><td class="prop-name">genre_tags</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">得意ジャンル（和食・中華など）</td></tr>
+                <tr><td class="prop-name">created_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>フィードカード</div>
+                <div class="ui-components">creator.name + profile_image_url をサムネイル下に表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>クリエイターページ（将来）</div>
+                <div class="ui-components">フォロー中クリエイターの最新動画一覧</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>ヘッダー</div>
+                <div class="ui-components">creator.name + 元URLリンク</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">recipes</span><span class="rel-note">このクリエイターを元にしたレシピ</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">feed_content</span><span class="rel-note">フィードコンテンツ</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">user_follows_creator</span><span class="rel-note">フォロワー一覧</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">移行方針</div>
+            <p style="font-size:12px;color:var(--warm-gray);">既存の recipes.creator_name (text) はキャッシュとして残す（JOIN コスト削減）。Phase 2 抽出時に platform_channel_id で upsert し creator_id FK を設定する。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- UserFollowsCreator -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">user_follows_creator</div>
+            <div class="entity-desc">ユーザーとクリエイターの多対多フォロー関係</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-refactor">⚠️ 更新</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">PK の一部</td></tr>
+                <tr><td class="prop-name">creator_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">PK の一部（creators.id）</td></tr>
+                <tr><td class="prop-name">notification_enabled</td><td class="prop-type">boolean</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">新着通知 ON/OFF。default true</td></tr>
+                <tr><td class="prop-name">followed_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">フォロー日時</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>クリエイターカード</div>
+                <div class="ui-components">フォローボタン状態（フォロー中 / フォロー）</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>フォロー中リスト</div>
+                <div class="ui-components">followed_at 降順でクリエイター一覧表示</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">creators</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== RECIPE DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">📖</div>
+      <div>
+        <div class="domain-title">レシピ (Recipe Domain)</div>
+        <div class="domain-desc">アプリの中心エンティティ群。SNS URL から抽出・構造化されるデータの全体</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- Recipe -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">recipes</div>
+            <div class="entity-desc">⭐ 中心エンティティ。ユーザーが保存したすべてのレシピの親</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-refactor">⚠️ 更新</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">保存したユーザー</td></tr>
+                <tr><td class="prop-name">creator_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 creators.id（Phase 2で設定）</td></tr>
+                <tr><td class="prop-name">creator_name</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">非正規化キャッシュ（JOIN軽減用）</td></tr>
+                <tr><td class="prop-name">title</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">レシピ名</td></tr>
+                <tr><td class="prop-name">source_url</td><td class="prop-type">text UNIQUE</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">元 SNS URL（重複チェック用）</td></tr>
+                <tr><td class="prop-name">source_type</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">youtube / instagram / tiktok / web</td></tr>
+                <tr><td class="prop-name">thumbnail_url</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">サムネイル画像URL</td></tr>
+                <tr><td class="prop-name">cook_time_minutes</td><td class="prop-type">int</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">Phase 2 で確定。Phase 1 は null の可能性</td></tr>
+                <tr><td class="prop-name">serving_size</td><td class="prop-type">int</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 人数（デフォルト 1〜2人前）</td></tr>
+                <tr><td class="prop-name">phase</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">phase1 / phase2 / manual</td></tr>
+                <tr><td class="prop-name">bookmark_status</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">🆕 saved / want_to_cook / cooked</td></tr>
+                <tr><td class="prop-name">tags</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">自動付与タグ（時短・作り置きなど）</td></tr>
+                <tr><td class="prop-name">mood_tags</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 あっさり/こってり/簡単/特別感</td></tr>
+                <tr><td class="prop-name">created_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">状態遷移 (phase)</div>
+            <div class="states-list">
+              <div class="state-item">
+                <span class="state-badge state-pending">phase1</span>
+                <div>
+                  <div style="font-size:12px;font-weight:600">Phase 1 完了</div>
+                  <div class="state-desc">タイトル・サムネイル・材料品名のみ。分量・手順は未確定。Goldenrod バッジ表示</div>
+                </div>
+              </div>
+              <div class="state-item">
+                <span class="state-badge state-active">phase2</span>
+                <div>
+                  <div style="font-size:12px;font-weight:600">Phase 2 完了（LLM正規化済み）</div>
+                  <div class="state-desc">分量・手順・タグが正規化済み。Goldenrod バッジ消える</div>
+                </div>
+              </div>
+              <div class="state-item">
+                <span class="state-badge state-neutral">manual</span>
+                <div>
+                  <div style="font-size:12px;font-weight:600">手動入力</div>
+                  <div class="state-desc">非対応URL or 字幕なし。ユーザーが手動で入力したレシピ</div>
+                </div>
+              </div>
+            </div>
+            <div class="state-flow">URL保存 → phase1（即時）<br>→ BullMQ → phase2（30秒以内）<br>字幕なし → manual_required → manual</div>
+
+            <div class="section-label" style="margin-top:16px">状態遷移 (bookmark_status)</div>
+            <div class="states-list">
+              <div class="state-item"><span class="state-badge state-pending">saved</span><div class="state-desc">保存済み（まだ調理予定なし）</div></div>
+              <div class="state-item"><span class="state-badge state-active">want_to_cook</span><div class="state-desc">今度作りたい（献立候補）</div></div>
+              <div class="state-item"><span class="state-badge state-done">cooked</span><div class="state-desc">作り済み（CookingRecord と連動）</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span><span class="rel-note">保存者</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">creators</span><span class="rel-note">元コンテンツ作成者（任意）</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">recipe_ingredients</span><span class="rel-note">正規化された材料リスト</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">recipe_steps</span><span class="rel-note">手順リスト</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">extraction_jobs</span><span class="rel-note">Phase 1/2 抽出ジョブ履歴</span></div>
+              <div class="rel-item"><span class="rel-type">m-to-m</span><span class="rel-target">collections</span><span class="rel-note">via collection_recipes</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">cooking_records</span><span class="rel-note">調理履歴</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">meal_plan_entries</span><span class="rel-note">献立での使用</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>RecipeCard（ホーム）</div>
+                <div class="ui-components">title / thumbnail / cook_time / phase バッジ / bookmark_status</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">全タブ</span>レシピ詳細画面</div>
+                <div class="ui-components">全フィールドを表示。phase1 時は分量に Goldenrod バッジ</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>SNS 保存フロー</div>
+                <div class="ui-components">URL 入力 → Phase 1 即表示 → Phase 2 プッシュ通知</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RecipeIngredient -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">recipe_ingredients</div>
+            <div class="entity-desc">recipes.ingredients (jsonb) を正規化。代替食材の参照元にもなる</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 正規化</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">substitutions の FK</td></tr>
+                <tr><td class="prop-name">recipe_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">recipes.id</td></tr>
+                <tr><td class="prop-name">name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">食材名（例：鶏もも肉）</td></tr>
+                <tr><td class="prop-name">amount</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">分量（例：200、適量）Phase1 では null</td></tr>
+                <tr><td class="prop-name">unit</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">単位（例：g、個、大さじ）</td></tr>
+                <tr><td class="prop-name">order</td><td class="prop-type">int</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">表示順序</td></tr>
+                <tr><td class="prop-name">is_optional</td><td class="prop-type">boolean</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">省略可能食材。default false</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>材料タブ</div>
+                <div class="ui-components">order 順に一覧表示。amount が null の場合はGoldenrod「要確認」バッジ。is_optional は薄いテキストで表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>代替食材UX</div>
+                <div class="ui-components">食材タップ → substitutions がある場合はボトムシートで代替案表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>買い物リスト生成</div>
+                <div class="ui-components">MealPlanEntry のレシピから集約して ShoppingItem を生成</div>
+              </div>
+            </div>
+            <div class="section-label" style="margin-top:14px">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipes</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">substitutions</span><span class="rel-note">代替食材候補</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Substitution -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">substitutions</div>
+            <div class="entity-desc">特定の食材に対する代替案。AI生成またはユーザー追加</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">ingredient_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">recipe_ingredients.id</td></tr>
+                <tr><td class="prop-name">alt_name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">代替食材名（例：豆乳）</td></tr>
+                <tr><td class="prop-name">impact_note</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">味・食感への影響（例：さっぱり仕上がる）</td></tr>
+                <tr><td class="prop-name">source</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">ai_generated / manual</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>代替食材ボトムシート</div>
+                <div class="ui-components">食材タップ → alt_name + impact_note のカードを最大3件表示。AI生成は「AI提案」バッジ付き</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipe_ingredients</span></div>
+            </div>
+            <div style="margin-top:14px;font-size:12px;color:var(--warm-gray)">
+              Phase 2 の Claude API 呼び出し時に主要食材に対して最大3件の代替案を生成・保存する。ユーザーは手動で追加・削除も可能。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RecipeStep -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">recipe_steps</div>
+            <div class="entity-desc">recipes.steps (jsonb) を正規化。ステップ別タイマー・材料ハイライトの基盤</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 正規化</span><span class="badge badge-v10">v1.0</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">recipe_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">recipes.id</td></tr>
+                <tr><td class="prop-name">order</td><td class="prop-type">int</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">手順番号（1始まり）</td></tr>
+                <tr><td class="prop-name">text</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">手順テキスト</td></tr>
+                <tr><td class="prop-name">duration_minutes</td><td class="prop-type">int</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">このステップの目安時間（タイマー用）</td></tr>
+                <tr><td class="prop-name">tip</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">調理のコツ（Phase 2 で AI 生成）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>調理モード</div>
+                <div class="ui-components">order 順にスワイプ表示。duration_minutes があればタイマーボタン表示。tip はアコーディオン</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>情報確認モード</div>
+                <div class="ui-components">手順タブ：番号付きリスト表示</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ExtractionJob -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">extraction_jobs</div>
+            <div class="entity-desc">Phase 1/2 の抽出ジョブ管理。リトライ・エラー履歴の追跡</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">recipe_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">recipes.id</td></tr>
+                <tr><td class="prop-name">phase</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">phase1 / phase2</td></tr>
+                <tr><td class="prop-name">status</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">pending / processing / done / failed</td></tr>
+                <tr><td class="prop-name">error_code</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">private_post / no_caption / quota_exceeded / llm_error</td></tr>
+                <tr><td class="prop-name">attempts</td><td class="prop-type">int</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">試行回数。default 0</td></tr>
+                <tr><td class="prop-name">started_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">処理開始時刻</td></tr>
+                <tr><td class="prop-name">completed_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">完了時刻</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">状態遷移</div>
+            <div class="states-list">
+              <div class="state-item"><span class="state-badge state-pending">pending</span><div class="state-desc">キュー待ち</div></div>
+              <div class="state-item"><span class="state-badge state-active">processing</span><div class="state-desc">BullMQ ワーカー処理中</div></div>
+              <div class="state-item"><span class="state-badge state-done">done</span><div class="state-desc">正常完了。recipes テーブル更新済み</div></div>
+              <div class="state-item"><span class="state-badge state-failed">failed</span><div class="state-desc">エラー。error_code に理由記録</div></div>
+            </div>
+            <div class="state-flow">pending → processing → done<br>               ↓ 失敗<br>          failed（attempts += 1, max 3回）<br>          3回失敗 → recipe は phase1 のまま保存</div>
+
+            <div class="section-label" style="margin-top:16px">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">SNS保存フロー</span>Phase 2 バナー</div>
+                <div class="ui-components">status=processing 時に「材料を精密化中...」バナー表示。Supabase Realtime で status 監視</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== ORGANIZATION DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">📚</div>
+      <div>
+        <div class="domain-title">整理 (Organization Domain)</div>
+        <div class="domain-desc">コレクション・ジャンル分類によるレシピの整理・フィルタリング</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- Collection -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">collections</div>
+            <div class="entity-desc">ユーザーが作成するレシピのグループ。自動コレクション（is_auto=true）も含む</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-existing">✅ 既存</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">例：平日ごはん、特別な日</td></tr>
+                <tr><td class="prop-name">is_auto</td><td class="prop-type">boolean</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">店主おすすめ・システム自動生成は true</td></tr>
+                <tr><td class="prop-name">created_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>ホーム コレクションセクション</div>
+                <div class="ui-components">横スクロールカルーセル。各コレクション名 + レシピ件数バッジ</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>コレクション管理</div>
+                <div class="ui-components">コレクション一覧・編集・削除（is_auto は削除不可）</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">m-to-m</span><span class="rel-target">recipes</span><span class="rel-note">via collection_recipes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CuisineGenre -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">cuisine_genres</div>
+            <div class="entity-desc">料理ジャンルのマスタ。tags[] に埋没していたジャンルを正規化。v1.5 成長ループの基盤</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v15">v1.5</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">name</td><td class="prop-type">text UNIQUE</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">和食 / 洋食 / 中華 / エスニック / イタリアン など</td></tr>
+                <tr><td class="prop-name">icon_name</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">SFSymbols / Emoji アイコン名</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>ジャンル習得マップ（v1.5）</div>
+                <div class="ui-components">cuisine_genres × user_skill_stats で習熟度レーダーチャートを描画</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>ジャンルフィルター</div>
+                <div class="ui-components">cuisine_genres でフィードをフィルタリング</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">m-to-m</span><span class="rel-target">recipes</span><span class="rel-note">via recipe_genres</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">user_skill_stats</span><span class="rel-note">ユーザーの習熟度</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== MEAL PLAN DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">📅</div>
+      <div>
+        <div class="domain-title">献立 (Meal Plan Domain)</div>
+        <div class="domain-desc">週次の食事計画と買い物リスト生成。計画ループの中核</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- MealPlan -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">meal_plans</div>
+            <div class="entity-desc">1週間単位の献立計画コンテナ</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-existing">✅ 既存</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">week_start_date</td><td class="prop-type">date</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">週の開始日（月曜日）</td></tr>
+                <tr><td class="prop-name">created_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>週間カレンダーヘッダー</div>
+                <div class="ui-components">week_start_date で当週の献立を特定。7日間を横スクロールで表示</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">meal_plan_entries</span></div>
+              <div class="rel-item"><span class="rel-type">has one</span><span class="rel-target">shopping_lists</span><span class="rel-note">関連買い物リスト（任意）</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MealPlanEntry -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">meal_plan_entries</div>
+            <div class="entity-desc">何曜日・どの食事スロット（朝/昼/夜）にどのレシピを割り当てるか</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">meal_plan_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">meal_plans.id</td></tr>
+                <tr><td class="prop-name">recipe_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">recipes.id</td></tr>
+                <tr><td class="prop-name">date</td><td class="prop-type">date</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">対象日（YYYY-MM-DD）</td></tr>
+                <tr><td class="prop-name">meal_slot</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">breakfast / lunch / dinner</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>日別カレンダーセル</div>
+                <div class="ui-components">日付タップ → meal_slot 別にレシピカード表示。空スロットは「+ 追加」ボタン表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>買い物リスト生成トリガー</div>
+                <div class="ui-components">週内のすべての meal_plan_entries の recipe_ingredients を集約</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">meal_plans</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ShoppingList -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">shopping_lists</div>
+            <div class="entity-desc">買い物リストのコンテナ。MealPlan から自動生成、または手動作成</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v10">v1.0</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">meal_plan_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">MealPlan 連動の場合のみ設定</td></tr>
+                <tr><td class="prop-name">generated_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">note</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">メモ欄（例：土曜の買い出し）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>買い出しセグメント</div>
+                <div class="ui-components">shopping_items をカテゴリ別にグループ化して表示。全チェックでリスト完了状態</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">meal_plans</span><span class="rel-note">任意</span></div>
+              <div class="rel-item"><span class="rel-type">has many</span><span class="rel-target">shopping_items</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ShoppingItem -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">shopping_items</div>
+            <div class="entity-desc">買い物リストの各アイテム。複数レシピの同一食材は合算・カテゴリ分類</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v10">v1.0</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">list_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">shopping_lists.id</td></tr>
+                <tr><td class="prop-name">ingredient_name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">食材名</td></tr>
+                <tr><td class="prop-name">amount</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">合算量（例：500）</td></tr>
+                <tr><td class="prop-name">unit</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">単位（例：g）</td></tr>
+                <tr><td class="prop-name">category</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">野菜 / 肉・魚 / 調味料 / 乳製品 / 穀物 / その他</td></tr>
+                <tr><td class="prop-name">is_checked</td><td class="prop-type">boolean</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">購入済みフラグ。default false</td></tr>
+                <tr><td class="prop-name">is_manually_added</td><td class="prop-type">boolean</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">ユーザーが手動で追加した場合 true</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>買い出しチェックリスト</div>
+                <div class="ui-components">category でセクション分け。is_checked でチェック表示。手動追加ボタンから is_manually_added=true で追加</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">shopping_lists</span></div>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:var(--warm-gray)">
+              買い物リスト生成時、同一 ingredient_name の食材は amount を合算（単位が同じ場合）。単位が異なる場合は別行で表示する。
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== COOKING DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🍳</div>
+      <div>
+        <div class="domain-title">調理 (Cooking Domain)</div>
+        <div class="domain-desc">調理記録と調理中セッション。成長ループへのデータ入力源</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+
+      <!-- CookingRecord -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">cooking_records</div>
+            <div class="entity-desc">レシピを実際に調理した記録。KPI「保存→調理転換率」の計測源</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-refactor">⚠️ 更新</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">recipe_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">cooked_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">調理日時</td></tr>
+                <tr><td class="prop-name">note</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">自由メモ</td></tr>
+                <tr><td class="prop-name">photo_url</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 調理完成写真URL（Supabase Storage）</td></tr>
+                <tr><td class="prop-name">rating</td><td class="prop-type">int 1-5</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 満足度評価。再調理率KPI計測用</td></tr>
+                <tr><td class="prop-name">would_make_again</td><td class="prop-type">boolean</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 また作りたいか（ two-tap フィードバック）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>調理履歴タイムライン</div>
+                <div class="ui-components">cooked_at 降順リスト。photo_url があればサムネイル表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>調理完了モーダル</div>
+                <div class="ui-components">「調理完了」ボタン → rating スター入力 + would_make_again トグル + photo_url カメラ</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>統計カード</div>
+                <div class="ui-components">total cook count / avg rating / would_make_again 率を集計表示</div>
+              </div>
+            </div>
+            <div class="section-label" style="margin-top:14px">関係</div>
+            <div class="rel-list">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">recipes</span></div>
+              <div class="rel-item"><span class="rel-type">has one</span><span class="rel-target">cooking_sessions</span><span class="rel-note">調理中セッション（任意）</span></div>
+              <div class="rel-item"><span class="rel-type">triggers</span><span class="rel-target">user_skill_stats</span><span class="rel-note">保存時に upsert</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CookingSession -->
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">cooking_sessions</div>
+            <div class="entity-desc">調理モード中の進行状態。アプリ切り替え時に進捗を保持するため（議論余地あり）</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v10">v1.0</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">cooking_record_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">cooking_records.id</td></tr>
+                <tr><td class="prop-name">current_step_order</td><td class="prop-type">int</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">現在実行中のステップ番号</td></tr>
+                <tr><td class="prop-name">started_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">調理開始時刻</td></tr>
+                <tr><td class="prop-name">timer_state</td><td class="prop-type">jsonb</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">タイマーの残り時間等（例: {stepId, remainMs}）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">状態 / UI対応</div>
+            <div class="states-list">
+              <div class="state-item"><span class="state-badge state-active">active</span><div class="state-desc">調理モード実行中。アプリ復帰時に current_step_order から再開</div></div>
+              <div class="state-item"><span class="state-badge state-done">completed</span><div class="state-desc">調理完了。CookingRecord.cooked_at が設定される</div></div>
+            </div>
+            <div class="ui-list" style="margin-top:12px">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-cross">レシピ詳細</span>調理モード画面</div>
+                <div class="ui-components">「調理を始める」タップ → CookingRecord + CookingSession 同時生成。ステップ進捗を current_step_order で同期</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">cooking_records</span></div>
+            </div>
+            <p style="font-size:11.5px;color:var(--warm-gray);margin-top:10px;">⚠️ 必要性はUXリサーチ後に確定。v1.0 では AsyncStorage で local にセッション保持する代替案も検討する。</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== DISCOVERY DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🔍</div>
+      <div>
+        <div class="domain-title">発見 (Discovery Domain)</div>
+        <div class="domain-desc">編集部キュレーションコンテンツ。発見タブのフィード基盤</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">feed_content</div>
+            <div class="entity-desc">編集部がシードする発見フィードコンテンツ。pgvector で類似検索</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-refactor">⚠️ 更新</span><span class="badge badge-mvp">MVP</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">creator_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">🆕 creators.id（Phase 2 以降に設定）</td></tr>
+                <tr><td class="prop-name">creator_name</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">非正規化キャッシュ</td></tr>
+                <tr><td class="prop-name">title</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">コンテンツタイトル</td></tr>
+                <tr><td class="prop-name">source_url</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">元SNS URL</td></tr>
+                <tr><td class="prop-name">source_type</td><td class="prop-type">enum</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">youtube / instagram</td></tr>
+                <tr><td class="prop-name">thumbnail_url</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">tags</td><td class="prop-type">text[]</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">フィルタリング用タグ</td></tr>
+                <tr><td class="prop-name">embedding</td><td class="prop-type">vector(1536)</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">pgvector 類似検索用埋め込み</td></tr>
+                <tr><td class="prop-name">published_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">公開日時（降順ソート基準）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>For you フィード</div>
+                <div class="ui-components">user_preferences × embedding で cos 類似度ソート。タップ → URL保存フローへ遷移</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>タグフィルター</div>
+                <div class="ui-components">tags / mood_tags で絞り込み。creator_name でクリエイター検索</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">creators</span><span class="rel-note">任意</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== GROWTH DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🌱</div>
+      <div>
+        <div class="domain-title">成長 (Growth Domain) — v1.5</div>
+        <div class="domain-desc">ジャンル習熟度の可視化。「次のチャレンジ」提案の基盤</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">user_skill_stats</div>
+            <div class="entity-desc">ユーザーのジャンル別調理回数集計。CookingRecord 保存時に自動 upsert</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v15">v1.5</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">複合主キー</td></tr>
+                <tr><td class="prop-name">genre_id</td><td class="prop-type">uuid FK PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">複合主キー</td></tr>
+                <tr><td class="prop-name">cook_count</td><td class="prop-type">int</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">このジャンルの調理回数</td></tr>
+                <tr><td class="prop-name">last_cooked_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">最終調理日時</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>ジャンル習得マップ</div>
+                <div class="ui-components">cuisine_genres × cook_count でレーダーチャート表示。ジャンルタップ → 関連レシピ一覧</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-plan">献立</span>「次のチャレンジ」提案</div>
+                <div class="ui-components">cook_count が低いジャンルのレシピを店主コメント付きで提案</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">cuisine_genres</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== PANTRY DOMAIN ==================== -->
+  <div class="domain-section">
+    <div class="domain-header">
+      <div class="domain-icon">🧺</div>
+      <div>
+        <div class="domain-title">食材管理 (Pantry Domain) — v1.5</div>
+        <div class="domain-desc">手持ち食材の在庫管理。「今日作れる」提案・賞味期限アラートに使用</div>
+      </div>
+    </div>
+
+    <div class="entity-grid">
+      <div class="entity-card">
+        <div class="entity-card-header">
+          <div>
+            <div class="entity-name">pantry_items</div>
+            <div class="entity-desc">ユーザーが手持ちの食材を登録。買い物リストのチェック完了時に自動追加も検討</div>
+          </div>
+          <div class="entity-badges"><span class="badge badge-new">🆕 新規</span><span class="badge badge-v15">v1.5</span></div>
+        </div>
+        <div class="entity-body">
+          <div>
+            <div class="section-label">プロパティ</div>
+            <table class="props-table">
+              <thead><tr><th>フィールド</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><td class="prop-name">id</td><td class="prop-type">uuid PK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">user_id</td><td class="prop-type">uuid FK</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+                <tr><td class="prop-name">name</td><td class="prop-type">text</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc">食材名</td></tr>
+                <tr><td class="prop-name">amount</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">残量（任意）</td></tr>
+                <tr><td class="prop-name">unit</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">単位</td></tr>
+                <tr><td class="prop-name">category</td><td class="prop-type">text</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">野菜 / 肉・魚 / 調味料 など</td></tr>
+                <tr><td class="prop-name">expiry_date</td><td class="prop-type">date</td><td><span class="prop-req req-opt">任意</span></td><td class="prop-desc">賞味期限日</td></tr>
+                <tr><td class="prop-name">added_at</td><td class="prop-type">timestamptz</td><td><span class="prop-req req-yes">必須</span></td><td class="prop-desc"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-label">UI対応 / 関係</div>
+            <div class="ui-list">
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-me">自分</span>食材管理タブ（v1.5）</div>
+                <div class="ui-components">カテゴリ別一覧。expiry_date 近いものをアラート（3日前）表示</div>
+              </div>
+              <div class="ui-item">
+                <div class="ui-screen"><span class="ui-tab tab-disc">発見</span>「今日作れる」提案</div>
+                <div class="ui-components">pantry_items × recipe_ingredients の在庫照合で、手持ち食材で作れるレシピを提案</div>
+              </div>
+            </div>
+            <div class="rel-list" style="margin-top:12px">
+              <div class="rel-item"><span class="rel-type">belongs to</span><span class="rel-target">users</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Uchimise Object Class Definitions v1.0 &nbsp;·&nbsp; 2026年3月 &nbsp;·&nbsp;
+  <span>次のステップ → Step 3: ARCHITECTURE.md スキーマ更新</span>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+# Uchimise — Project Rules
+# Cursor と Claude Code が参照するプロジェクト文脈ファイル
+
+---
+
+## Project overview
+
+**Uchimise（うちのお店、開けよう。）**は、20代の一人暮らし社会人がSNSで見つけた料理動画を
+ワンタップで保存し、献立計画・調理・振り返りまでを一気通貫で行えるiOSアプリ。
+
+### Core value proposition
+「毎日の献立を考える手間をなくしながら、料理への発見と成長体験を届ける」
+
+### Primary persona
+田中あかり（26歳・一人暮らし社会人・東京）
+- YouTubeで料理動画を検索・視聴。お気に入りYouTuberを「信頼できる先生」として活用
+- 平日：帰宅後に冷蔵庫ベースで決定（冷蔵庫ドリブン）
+- 週末：買い出し前に献立を考える（発見モード）
+- 最大のペイン：保存リストの墓場化・材料不足による料理断念
+
+### Brand concept
+「行きつけの食料品店の、物知りな店主」
+- ユーザーとAI店主の一対一の関係
+- 義務感なくふらっと来られる場所
+- 毎日来なくていい。来たいときに来られる
+
+---
+
+## Architecture
+
+### Monorepo structure (pnpm workspaces)
+```
+uchimise/
+├── apps/
+│   ├── mobile/          # Expo React Native (iOS優先)
+│   └── api/             # Node.js + Hono
+└── packages/
+    ├── tokens/          # Design tokens (Single source of truth)
+    └── ui/              # Storybook component library
+```
+
+### Tech stack
+| Layer | Choice | Reason |
+|---|---|---|
+| Mobile | React Native (Expo) | iOS優先・後にAndroid対応 |
+| Backend | Node.js + Hono | 軽量・LLM連携容易 |
+| Database | PostgreSQL + Supabase | Auth・Realtime・RLS一体 |
+| SNS extraction Ph.1 | Regex + simple NLP | 3秒以内の速度要件 |
+| SNS extraction Ph.2 | Claude API (claude-sonnet-4-6) | 材料正規化・手順構造化 |
+| Feed | Supabase + pgvector | embedding類似検索 |
+| Push notifications | Expo Notifications | iOS/Android共通 |
+
+### Key API endpoints
+- `POST /api/extract` — SNS URL受け取り→Phase 1結果即返却→Phase 2非同期
+- `GET/POST /api/recipes` — レシピ保存・取得
+- `GET /api/feed` — 発見フィード（For you / タグ絞り込み）
+- `GET/POST /api/collections` — コレクション管理
+
+---
+
+## Design system
+
+### Color tokens (packages/tokens/colors.ts)
+```typescript
+export const colors = {
+  espresso:   '#2A1600',  // nav bg / header / primary text
+  walnut:     '#633806',  // secondary text / border / section heading
+  ochre:      '#EF9F27',  // CTA / primary accent / active state
+  honey:      '#FAC775',  // secondary accent / tag border / divider
+  cream:      '#FAEEDA',  // page background / card background
+  ivory:      '#FFF8EE',  // surface / component background
+  // Semantic (added v2.1)
+  sage:       '#7A9E5A',  // success / cooked / saved
+  rust:       '#B84040',  // error / extraction failure
+  goldenrod:  '#C8A900',  // warning / unconfirmed field (≠ ochre)
+  mist:       '#D4B896',  // tertiary text / placeholder
+  complement: '#4A7B9D',  // accent-complement (badge highlight)
+} as const;
+```
+
+### Typography
+- **Klee One** — headings / shopkeeper messages / card titles
+- **Noto Sans JP** — body / UI labels / descriptions
+- **Plus Jakarta Sans** — logo / numbers / quantities
+
+### Spacing scale
+```typescript
+export const spacing = {
+  xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28
+} as const;
+```
+
+### Border radius
+```typescript
+export const radius = {
+  sm: 10, md: 14, lg: 16, pill: 999
+} as const;
+```
+
+### Design principles
+1. **発見は、仕入れたてのように差し出す** — 新鮮さを演出
+2. **提案は一言添えて、決めるのはあなた** — 押しつけない
+3. **常連の記憶を持ち続ける** — パーソナライズ
+4. **毎日来なくていい店をつくる** — 義務感を排除
+5. **棚の余白が、次の発見をつくる** — 情報を詰め込みすぎない
+
+---
+
+## Navigation structure (3 tabs)
+
+| Tab | Label | Purpose |
+|---|---|---|
+| 献立 (Plan) | 献立 | Weekly calendar + segment (Recipe / Shopping list) |
+| 発見 (Discover) | 発見 | For you feed + mood tags |
+| 自分 (Me) | 自分 | Cooking history + stats |
+
+### 献立タブの構成
+- Fixed header: 週間カレンダー（7日）+ セグメントコントロール（レシピ/買い出し）
+- レシピセグメント: 今日の登録済みカード → 店主のひとこと → Phase 2バナー → コレクション → 今日の発見
+- 買い出しセグメント: カテゴリ別チェックリスト
+
+### SNS保存フロー（2フェーズ）
+- Phase 1（3秒以内）: タイトル・サムネイル・材料品名を即時表示。未確認はGoldenrodバッジ
+- Phase 2（30秒以内）: LLMで材料分量・手順を正規化。完了後プッシュ通知
+
+---
+
+## Coding conventions
+
+### TypeScript
+- strict: true を必須とする
+- `any` は禁止。`unknown` を使って型を絞る
+- Props はすべて型定義する（inline type よりも named interface を推奨）
+
+### File naming
+- Componentsは PascalCase: `RecipeCard.tsx`
+- Hooks は `use` prefix: `useRecipes.ts`
+- Utils は camelCase: `extractIngredients.ts`
+- Constants は SCREAMING_SNAKE_CASE: `MAX_RETRY_COUNT`
+
+### Import order
+1. React / React Native
+2. Third-party libraries
+3. Internal packages (`@uchimise/tokens`, `@uchimise/ui`)
+4. Relative imports (`./`, `../`)
+
+### Component structure
+```tsx
+// 1. imports
+// 2. types/interfaces
+// 3. component function
+// 4. styles (StyleSheet.create or styled-components)
+// 5. export default
+```
+
+### Comments
+- コードの「なぜ」を書く。「何を」はコード自体が示す
+- TODOは `// TODO(username): description` 形式
+- API制約・ライセンス上の注意はコメントで明示
+
+---
+
+## Key constraints
+
+### SNS API
+- Instagram: Private投稿は取得不可。キャプションテキストから抽出
+- YouTube: Data API v3の利用規約を必ず遵守。クォータ管理を厳密に
+- Phase 1で正規表現カバーできた項目はPhase 2のLLM処理をスキップしてコスト削減
+
+### Performance targets (BRD §5)
+- SNS URL → Phase 1表示: 3秒以内 (P95)
+- アプリコールドスタート: 3秒以内
+- フィード初回表示: 2秒以内
+
+### iOS / UX
+- iOSのHIGに準拠する（ナビゲーションバーはタブ名、ロゴはスプラッシュのみ）
+- ライト/ダークモードを必ず両対応する（CSSカスタムプロパティ or theme object）
+
+---
+
+## Do NOT
+
+- `colors.espresso` 等のトークン外の色を直接ハードコードしない
+- UIコピーに感嘆符（！）を使わない（ブランドガイドライン禁止）
+- シャドウ（box-shadow / elevation）を使わない（フラットデザイン原則）
+- 連続記録バッジ・ストリーク通知を実装しない（義務感を生む）
+- `console.log` を本番コードに残さない
+- `any` 型を使わない
+- パレット外の色を追加する場合はデザインシステムレビューを経ること
+
+---
+
+## Project status (2026-03)
+
+### Completed (UI prototypes)
+- [x] ホーム画面 v4 (献立/発見/自分タブ、ライト/ダーク対応)
+- [x] レシピ詳細画面 (情報確認モード・調理モード・代替食材UX)
+- [x] SNS保存フロー (Phase 1/2・エラー状態・シェアシート)
+- [x] ブランドガイドライン v2.1 (セマンティックカラー含む)
+
+### In progress (Sprint 1-2)
+- [ ] Monorepo セットアップ
+- [ ] packages/tokens 定義
+- [ ] SNS抽出パイプライン (/api/extract)
+- [ ] Supabase Auth + recipes テーブル
+- [ ] Storybook セットアップ + primitives 3件
+
+### Reference documents
+- `docs/ARCHITECTURE.md` — アーキテクチャ詳細・ADR
+- `docs/DESIGN_SYSTEM.md` — デザイントークン・コンポーネント仕様
+- `docs/API_SPEC.md` — APIエンドポイント仕様

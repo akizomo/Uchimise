@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>調理モード — デザイン確認</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Hiragino Sans', sans-serif;
+    background: #1a1a1a;
+    display: flex;
+    gap: 32px;
+    padding: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .label {
+    color: #888;
+    font-size: 12px;
+    text-align: center;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+  /* Phone frame */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: #FAEEDA;
+    border-radius: 48px;
+    border: 10px solid #222;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone.dark { background: #120A00; }
+
+  /* Status bar */
+  .status {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+  .status-time { font-size: 15px; font-weight: 600; color: #3C1F00; }
+  .phone.dark .status-time { color: #FAEEDA; }
+
+  /* AppBar */
+  .appbar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 0.5px solid rgba(250,199,117,0.5);
+    flex-shrink: 0;
+  }
+  .phone.dark .appbar { border-color: rgba(250,199,117,0.12); }
+  .appbar-action {
+    font-size: 15px;
+    color: #C8881A;
+    cursor: pointer;
+  }
+  .appbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #3C1F00;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .phone.dark .appbar-title { color: #FAEEDA; }
+
+  /* Progress */
+  .progress-section {
+    padding: 20px 24px 0;
+    flex-shrink: 0;
+  }
+  .step-counter {
+    font-size: 13px;
+    color: #8B6040;
+    margin-bottom: 8px;
+  }
+  .phone.dark .step-counter { color: #8B6040; }
+  .progress-bar-track {
+    height: 3px;
+    background: rgba(250,199,117,0.3);
+    border-radius: 2px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: #C8881A;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* Step content */
+  .step-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 24px;
+  }
+  .step-number-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background: #C8881A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #FFF;
+  }
+  .step-text {
+    font-size: 22px;
+    line-height: 1.65;
+    color: #3C1F00;
+    font-weight: 400;
+  }
+  .phone.dark .step-text { color: #FAEEDA; }
+  .step-hint {
+    font-size: 14px;
+    color: #8B6040;
+    line-height: 1.6;
+  }
+
+  /* Swipe hint */
+  .swipe-hint {
+    text-align: center;
+    font-size: 13px;
+    color: #8B6040;
+    padding-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Footer nav */
+  .footer-nav {
+    padding: 12px 24px 40px;
+    display: flex;
+    gap: 12px;
+    background: #F5ECD8;
+    border-top: 0.5px solid rgba(250,199,117,0.5);
+    flex-shrink: 0;
+  }
+  .phone.dark .footer-nav {
+    background: #2A1600;
+    border-color: rgba(250,199,117,0.12);
+  }
+  .btn {
+    flex: 1;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid #C8881A;
+    color: #C8881A;
+  }
+  .btn-primary {
+    background: #C8881A;
+    color: #FFF;
+    flex: 2;
+  }
+
+  /* Completion screen */
+  .completion-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 20px;
+    text-align: center;
+  }
+  .completion-emoji {
+    font-size: 64px;
+    margin-bottom: 8px;
+  }
+  .completion-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #3C1F00;
+    line-height: 1.5;
+  }
+  .phone.dark .completion-title { color: #FAEEDA; }
+  .completion-sub {
+    font-size: 15px;
+    color: #8B6040;
+    line-height: 1.7;
+  }
+  .note-input {
+    width: 100%;
+    background: #F5ECD8;
+    border: 0.5px solid rgba(250,199,117,0.7);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    color: #8B6040;
+    text-align: left;
+    margin-top: 8px;
+  }
+  .phone.dark .note-input {
+    background: #1E1000;
+    border-color: rgba(250,199,117,0.2);
+    color: #8B6040;
+  }
+
+  /* Phone wrapper */
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; }
+</style>
+</head>
+<body>
+
+<!-- Screen 1: Cooking Step -->
+<div class="phone-wrap">
+  <p class="label">調理ステップ画面（ライト）</p>
+  <div class="phone">
+    <div class="status">
+      <span class="status-time">9:41</span>
+    </div>
+    <div class="appbar">
+      <span class="appbar-action">終わる</span>
+      <span class="appbar-title">鶏もも肉の照り焼き</span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="progress-section">
+      <div class="step-counter">3 / 6 ステップ</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" style="width: 50%"></div>
+      </div>
+    </div>
+
+    <div class="step-content">
+      <div class="step-number-badge">3</div>
+      <div class="step-text">フライパンに油をひき、中火で鶏肉を皮目から焼く。3〜4分ほど動かさずに焼き、焼き色がついたら裏返す。</div>
+      <div class="step-hint">皮目をしっかり焼くと、パリッとした食感になります。</div>
+    </div>
+
+    <div class="swipe-hint">← 前へ　　次へ →</div>
+
+    <div class="footer-nav">
+      <button class="btn btn-secondary">← 前へ</button>
+      <button class="btn btn-primary">次へ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 2: Cooking Step (Dark) -->
+<div class="phone-wrap">
+  <p class="label">調理ステップ画面（ダーク）</p>
+  <div class="phone dark">
+    <div class="status">
+      <span class="status-time" style="color:#FAEEDA">9:41</span>
+    </div>
+    <div class="appbar">
+      <span class="appbar-action">終わる</span>
+      <span class="appbar-title">鶏もも肉の照り焼き</span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="progress-section">
+      <div class="step-counter">最後のステップ</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <div class="step-content">
+      <div class="step-number-badge">6</div>
+      <div class="step-text" style="color:#FAEEDA">タレが全体に絡んだら火を止め、器に盛って完成。好みでいりごまを散らす。</div>
+      <div class="step-hint">タレは煮詰めすぎると焦げやすいので、手早く仕上げましょう。</div>
+    </div>
+
+    <div class="swipe-hint" style="color:#8B6040">← 前へ</div>
+
+    <div class="footer-nav">
+      <button class="btn btn-secondary">← 前へ</button>
+      <button class="btn btn-primary" style="background:#C8881A">できあがり</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 3: Completion -->
+<div class="phone-wrap">
+  <p class="label">完了画面</p>
+  <div class="phone">
+    <div class="status">
+      <span class="status-time">9:41</span>
+    </div>
+    <div class="appbar">
+      <span style="width:40px"></span>
+      <span class="appbar-title"></span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="completion-content">
+      <div class="completion-emoji">🍳</div>
+      <div class="completion-title">できあがりました。<br>お疲れさまでした。</div>
+      <div class="completion-sub">次に作るときのために、<br>ひとことメモを残しておきませんか。</div>
+      <div class="note-input">例：もう少し甘めにするとよかった</div>
+    </div>
+
+    <div class="footer-nav" style="flex-direction: column; gap: 10px;">
+      <button class="btn btn-primary" style="flex: none; width: 100%">記録する</button>
+      <button class="btn btn-secondary" style="flex: none; width: 100%; border-color: #C8881A40; color: #8B6040">記録せずに終わる</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

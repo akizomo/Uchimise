@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="Uchimise">
+
+  <!-- 暖簾の色（背面）-->
+  <path d="M13,34 h14 v24 a7 7 0 0 1 -14 0 Z" fill="#EF9F27"/>
+  <path d="M33,34 h14 v24 a7 7 0 0 1 -14 0 Z" fill="#FAC775"/>
+  <path d="M53,34 h14 v24 a7 7 0 0 1 -14 0 Z" fill="#EF9F27"/>
+
+  <!-- 家シルエット（空抜き）-->
+  <path
+    fill="#2A1600"
+    fill-rule="evenodd"
+    d="M40,8 L8,34 L13,34 L13,58 L67,58 L67,34 L72,34 Z
+       M13,34 h14 v24 a7 7 0 0 1 -14 0 Z
+       M33,34 h14 v24 a7 7 0 0 1 -14 0 Z
+       M53,34 h14 v24 a7 7 0 0 1 -14 0 Z"
+  />
+
+</svg>

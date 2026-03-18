@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@uchimise/tokens": ["../../packages/tokens/src/index.ts"],
+      "@uchimise/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["src", "app"],
+  "exclude": ["node_modules"]
+}

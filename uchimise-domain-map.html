@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uchimise — Domain Map v1.0</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+  <style>
+    :root {
+      --ivory: #FFF8EE;
+      --ochre: #EF9F27;
+      --espresso: #2A1600;
+      --goldenrod: #C8A900;
+      --sand: #E8D5B0;
+      --cream: #F5EDDF;
+      --warm-gray: #8B7355;
+      --blue-light: #dbeafe;
+      --blue-border: #3b82f6;
+      --green-light: #dcfce7;
+      --green-border: #22c55e;
+      --yellow-light: #fef9c3;
+      --yellow-border: #eab308;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ivory);
+      color: var(--espresso);
+      font-family: -apple-system, 'Helvetica Neue', 'Hiragino Sans', Arial, sans-serif;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    header {
+      background: var(--espresso);
+      color: var(--ivory);
+      padding: 24px 48px;
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      border-bottom: 3px solid var(--ochre);
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--ochre); letter-spacing: 0.01em; }
+    header .meta { font-size: 13px; color: var(--sand); opacity: 0.85; }
+    .container { max-width: 1440px; margin: 0 auto; padding: 48px; }
+    section { margin-bottom: 64px; }
+    h2 {
+      font-size: 16px; font-weight: 700; color: var(--espresso);
+      margin-bottom: 20px; padding-bottom: 10px;
+      border-bottom: 2px solid var(--ochre);
+    }
+    h3 { font-size: 14px; font-weight: 600; margin: 24px 0 10px; color: var(--espresso); }
+
+    /* Legend */
+    .legend {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      margin-bottom: 16px; align-items: center;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    .dot-existing { background: var(--blue-light); border: 1.5px solid var(--blue-border); }
+    .dot-new { background: var(--green-light); border: 1.5px solid var(--green-border); }
+    .dot-jsonb { background: var(--yellow-light); border: 1.5px dashed var(--yellow-border); }
+
+    /* Diagram */
+    .diagram-wrapper {
+      background: white; border: 1px solid var(--sand);
+      border-radius: 12px; padding: 36px 32px;
+      overflow-x: auto; min-height: 400px;
+    }
+    .diagram-wrapper .mermaid { min-width: 900px; }
+
+    /* Value Loop */
+    .loop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 4px; }
+    .loop-card {
+      background: white; border: 1px solid var(--sand);
+      border-radius: 10px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .loop-card::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 4px; height: 100%;
+    }
+    .loop-discovery::before { background: var(--ochre); }
+    .loop-plan::before { background: #60a5fa; }
+    .loop-growth::before { background: #34d399; }
+    .loop-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .loop-steps { font-size: 12px; color: var(--warm-gray); }
+    .loop-steps span { display: block; padding: 2px 0; }
+    .loop-steps .arrow { color: var(--ochre); font-weight: bold; }
+
+    /* Table */
+    .table-wrapper { overflow-x: auto; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--espresso); color: var(--ivory);
+      padding: 10px 14px; text-align: left;
+      font-weight: 500; font-size: 12px; white-space: nowrap;
+    }
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child { border-radius: 0 6px 0 0; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--sand); vertical-align: top; line-height: 1.5; }
+    tr:nth-child(even) td { background: var(--cream); }
+    tr:hover td { background: #fef3e2; }
+    .entity-name { font-weight: 600; font-family: 'SF Mono', 'Courier New', monospace; font-size: 12px; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; white-space: nowrap; margin-right: 4px;
+    }
+    .badge-new { background: var(--green-light); color: #15803d; }
+    .badge-refactor { background: var(--yellow-light); color: #92400e; }
+    .badge-v15 { background: #f3e8ff; color: #7c3aed; }
+    .badge-mvp { background: #fee2e2; color: #991b1b; }
+    .badge-v10 { background: #dbeafe; color: #1e40af; }
+    .priority { font-size: 11px; color: var(--warm-gray); }
+
+    /* Perspective Cards */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 8px; }
+    .card {
+      background: white; border: 1px solid var(--sand);
+      border-radius: 10px; padding: 18px 20px;
+    }
+    .card-high { border-left: 3px solid #ef4444; }
+    .card-med  { border-left: 3px solid var(--ochre); }
+    .card-low  { border-left: 3px solid var(--sand); }
+    .card-icon { font-size: 22px; margin-bottom: 6px; }
+    .card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .card-desc { font-size: 12px; color: var(--warm-gray); line-height: 1.55; }
+    .card-entities { font-size: 11px; color: var(--blue-border); margin-top: 6px; font-family: monospace; }
+
+    footer {
+      background: var(--espresso); color: var(--sand);
+      text-align: center; padding: 24px; font-size: 12px; margin-top: 80px;
+    }
+    footer span { color: var(--ochre); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Uchimise — Domain Map</h1>
+  <div class="meta">v1.0 · 2026年3月 · Step 1: ドメインマップ &amp; 提案エンティティ</div>
+</header>
+
+<div class="container">
+
+  <!-- ==================== SECTION 1: DOMAIN MAP ==================== -->
+  <section>
+    <h2>ドメインマップ</h2>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot dot-existing"></div>
+        <span>既存エンティティ（DBスキーマ定義済み）</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-new"></div>
+        <span>🆕 提案エンティティ（新規追加 or 正規化）</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-jsonb"></div>
+        <span>⚠️ jsonb埋め込み（正規化要検討）</span>
+      </div>
+    </div>
+
+    <div class="diagram-wrapper">
+      <div class="mermaid">
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#dbeafe',
+    'primaryBorderColor': '#3b82f6',
+    'primaryTextColor': '#1e3a5f',
+    'lineColor': '#8B7355',
+    'secondaryColor': '#dcfce7',
+    'tertiaryColor': '#fff7ed',
+    'fontSize': '13px',
+    'fontFamily': 'Helvetica Neue, Arial, sans-serif'
+  }
+}}%%
+flowchart TB
+
+  subgraph EXT["🌐 外部ソース"]
+    YT([YouTube])
+    IG([Instagram])
+  end
+
+  subgraph DISC["🔍 発見 Discovery"]
+    FEED["FeedContent\n編集部コンテンツ"]
+    CRE["Creator 🆕\nクリエイター"]
+  end
+
+  subgraph RCP["📖 レシピ Recipe"]
+    RECIPE["Recipe\n⭐ 中心エンティティ"]
+    INGR["Ingredient 🆕\n材料（jsonb→正規化）"]
+    STEP["Step ⚠️\n手順（jsonb→正規化提案）"]
+    SUBST["Substitution 🆕\n代替食材"]
+    EJ["ExtractionJob 🆕\n抽出ジョブ"]
+  end
+
+  subgraph ORG["📚 整理 Organization"]
+    COLL["Collection\nコレクション"]
+    TAG["Tag / MoodTag 🆕\nタグ・気分タグ"]
+    CGEN["CuisineGenre 🆕\n料理ジャンル"]
+  end
+
+  subgraph PLAN["📅 献立 Meal Plan"]
+    MP["MealPlan\n献立（週次）"]
+    MPE["MealPlanEntry 🆕\n献立エントリ"]
+    SL["ShoppingList 🆕\n買い物リスト"]
+    SI["ShoppingItem 🆕\n買い物アイテム"]
+  end
+
+  subgraph PAN["🧺 食材管理 Pantry  v1.5"]
+    PI["PantryItem 🆕\n食材在庫"]
+  end
+
+  subgraph COOK["🍳 調理 Cooking"]
+    CR["CookingRecord\n調理記録"]
+    CS["CookingSession 🆕\n調理セッション（議論余地あり）"]
+  end
+
+  subgraph USR["🙋 ユーザー User"]
+    USER["User\nユーザー"]
+    UPREF["UserPreference 🆕\n嗜好設定"]
+    UFC["UserFollowsCreator\nクリエイターフォロー"]
+    USS["UserSkillStat 🆕\nジャンル習熟度"]
+  end
+
+  %% External → Discovery
+  YT & IG --> CRE
+  CRE --> FEED
+  CRE --> RECIPE
+  FEED -."保存".-> RECIPE
+
+  %% Recipe内部
+  RECIPE --- INGR
+  INGR --> SUBST
+  RECIPE --- STEP
+  RECIPE --> EJ
+
+  %% Recipe ← → Organization
+  RECIPE --- COLL
+  RECIPE --- TAG
+  RECIPE --- CGEN
+
+  %% User → Recipe / Collection
+  USER --> RECIPE
+  USER --> COLL
+  USER --- UPREF
+  USER --> UFC
+  UFC --> CRE
+
+  %% Pantry
+  USER --> PI
+  PI -."在庫照合".-> RECIPE
+
+  %% Meal Plan
+  USER --> MP
+  MPE --> MP
+  MPE --> RECIPE
+  MP --> SL
+  SL --> SI
+
+  %% Cooking
+  CR --> RECIPE
+  CR --- CS
+  USER --> CR
+  CR --> USS
+  USS --> CGEN
+
+  %% AI influence
+  UPREF -."AI提案に影響".-> MP
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== SECTION 2: VALUE LOOPS ==================== -->
+  <section>
+    <h2>コアバリューループ</h2>
+    <p style="font-size:13px;color:var(--warm-gray);margin-bottom:16px;">
+      Uchimiseのビジョン「発見と成長体験を届ける」を支える3つの循環構造。各ループが機能することで保存→調理転換率（KPI 30%）と30日継続率（KPI 50%）が達成される。
+    </p>
+    <div class="loop-grid">
+      <div class="loop-card loop-discovery">
+        <div class="loop-title">🔍 発見ループ</div>
+        <div class="loop-steps">
+          <span>FeedContent / Creator</span>
+          <span class="arrow">↓ 保存</span>
+          <span>Recipe（bookmark_status: saved）</span>
+          <span class="arrow">↓ 調理</span>
+          <span>CookingRecord</span>
+          <span class="arrow">↓ 学習</span>
+          <span>UserSkillStat → 次の発見提案</span>
+        </div>
+      </div>
+      <div class="loop-card loop-plan">
+        <div class="loop-title">📅 計画ループ</div>
+        <div class="loop-steps">
+          <span>Recipe（保存済み）</span>
+          <span class="arrow">↓ 週次計画</span>
+          <span>MealPlan + MealPlanEntry</span>
+          <span class="arrow">↓ 自動生成</span>
+          <span>ShoppingList + ShoppingItem</span>
+          <span class="arrow">↓ 買い出し → 調理</span>
+          <span>CookingRecord</span>
+        </div>
+      </div>
+      <div class="loop-card loop-growth">
+        <div class="loop-title">🌱 成長ループ</div>
+        <div class="loop-steps">
+          <span>CookingRecord × CuisineGenre</span>
+          <span class="arrow">↓ 蓄積</span>
+          <span>UserSkillStat（ジャンル習熟度）</span>
+          <span class="arrow">↓ 可視化</span>
+          <span>ジャンル習得マップ</span>
+          <span class="arrow">↓ 提案</span>
+          <span>「次のチャレンジ」→ 発見ループへ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== SECTION 3: PROPOSED ENTITIES ==================== -->
+  <section>
+    <h2>提案エンティティ一覧</h2>
+    <p style="font-size:13px;color:var(--warm-gray);margin-bottom:16px;">
+      現行スキーマ（ARCHITECTURE.md）との差分を整理。🆕 = 新規追加、⚠️ = リファクタリング推奨。
+    </p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>エンティティ</th>
+            <th>種別</th>
+            <th>現状の問題</th>
+            <th>提案内容</th>
+            <th>バージョン</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="entity-name">Creator</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>recipes.creator_name がtext型のみ。クリエイターを個別に管理・参照できない</td>
+            <td>独立テーブル化。id / name / platform / channel_id / profile_image_url / genre_tags[]。Recipe.creator_id FK + UserFollowsCreator.creator_id FK で参照</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">Ingredient</td>
+            <td><span class="badge badge-refactor">⚠️ 正規化</span></td>
+            <td>recipes.ingredients が jsonb。型安全性なし。代替食材の ingredient_id 参照ができない</td>
+            <td>recipe_ingredients テーブルへ正規化。{ recipe_id, name, amount, unit, order, is_optional }</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">Substitution</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>BRDに機能要件あり（代替食材提示）、DBスキーマなし</td>
+            <td>substitutions { id, ingredient_id FK, alt_name, impact_note, source }。Ingredient 正規化が前提</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">Step</td>
+            <td><span class="badge badge-refactor">⚠️ 正規化検討</span></td>
+            <td>recipes.steps が jsonb。ステップ別タイマー実装・Step内の材料ハイライトが困難</td>
+            <td>recipe_steps テーブルへ。{ recipe_id, order, text, duration_minutes, tip }。優先度は Ingredient より低くてよい</td>
+            <td><span class="badge badge-v10">v1.0</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">ExtractionJob</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>Phase1/2 のライフサイクルが recipes.phase / extraction_status に埋没。複数回リトライ・エラー履歴が追跡できない</td>
+            <td>extraction_jobs { id, recipe_id FK, phase, status, error_code, attempts, started_at, completed_at }。レシピから分離してジョブ管理を明確化</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">MealPlanEntry</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>MealPlan テーブルはあるが、何曜日・どの食事スロット（朝/昼/夜）にどのレシピを割り当てるかのエントリがない</td>
+            <td>meal_plan_entries { id, meal_plan_id FK, recipe_id FK, date, meal_slot ENUM(breakfast/lunch/dinner) }</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">ShoppingList</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>v1.0 の「買い物リスト自動生成」機能に必須だがスキーマなし</td>
+            <td>shopping_lists { id, user_id FK, meal_plan_id FK, generated_at, note }</td>
+            <td><span class="badge badge-v10">v1.0</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">ShoppingItem</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>同上。複数レシピの同一食材の合算・カテゴリ分類・チェック状態の保持が必要</td>
+            <td>shopping_items { id, list_id FK, ingredient_name, amount, unit, category, is_checked, is_manually_added }</td>
+            <td><span class="badge badge-v10">v1.0</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">UserPreference</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>AI献立提案・発見機能のパーソナライズに必須だが、ユーザーの好み・制約を保存するテーブルがない</td>
+            <td>user_preferences { user_id FK, dietary_restrictions[], dislikes[], skill_level, max_cook_time_minutes, discovery_appetite }</td>
+            <td><span class="badge badge-v10">v1.0</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">CuisineGenre</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>v1.5 の「ジャンル習得マップ」に必須。現状は recipes.tags[] に文字列として埋没しており集計不能</td>
+            <td>cuisine_genres マスタ { id, name, icon_name }。recipe_genres 中間テーブルで多対多。user_skill_stats で集計</td>
+            <td><span class="badge badge-v15">v1.5</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">UserSkillStat</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>ジャンル習得マップ・「次のチャレンジ」提案の集計元データが存在しない</td>
+            <td>user_skill_stats { user_id FK, genre_id FK, cook_count, last_cooked_at }。CookingRecord 保存時に upsert で更新</td>
+            <td><span class="badge badge-v15">v1.5</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">PantryItem</td>
+            <td><span class="badge badge-new">🆕 新規</span></td>
+            <td>v1.5 の食材在庫管理機能。「今日作れる」提案・賞味期限アラートに必須</td>
+            <td>pantry_items { id, user_id FK, name, amount, unit, category, expiry_date, added_at }。ShoppingList チェック時に自動追加する連携も考慮</td>
+            <td><span class="badge badge-v15">v1.5</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">bookmark_status <br><span style="font-weight:400;font-size:11px;">（Recipe フィールド追加）</span></td>
+            <td><span class="badge badge-refactor">⚠️ フィールド追加</span></td>
+            <td>BRDに「お気に入り / 後で作りたい / 作り済み」のステータス管理とあるが recipes テーブルに該当フィールドなし</td>
+            <td>recipes に bookmark_status ENUM('saved', 'want_to_cook', 'cooked') を追加。または recipe_bookmarks テーブルで分離</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">CookingSession</td>
+            <td><span class="badge badge-new">🆕 議論余地あり</span></td>
+            <td>調理モードUI（レシピ詳細）はあるが、「どのステップまで進んだか」「タイマー状態」を保存する仕組みがない。アプリ切り替え時に進捗が失われる</td>
+            <td>cooking_sessions { id, cooking_record_id FK, current_step_order, started_at, timer_state_json }。必要性はUXリサーチで確認したい</td>
+            <td><span class="badge badge-v10">v1.0</span></td>
+          </tr>
+          <tr>
+            <td class="entity-name">MoodTag</td>
+            <td><span class="badge badge-refactor">⚠️ 分類整理</span></td>
+            <td>「気分で選ぶ」用タグ（あっさり/こってり/簡単/特別感）が通常の tags[] と混在。検索・フィルタリングで区別が難しい</td>
+            <td>recipes.tags[] を roles に分けるか、recipes に mood_tags[] を追加して明示的に分離する</td>
+            <td><span class="badge badge-mvp">MVP</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+
+  <!-- ==================== SECTION 4: MISSING DOMAIN PERSPECTIVES ==================== -->
+  <section>
+    <h2>自炊ドメインの見落とし・新視点</h2>
+    <p style="font-size:13px;color:var(--warm-gray);margin-bottom:16px;">
+      「料理・自炊」というドメイン全体で、現設計がカバーできていない視点。左ボーダーの色は重要度（🔴高 / 🟡中 / ⬜低）。
+    </p>
+    <div class="cards">
+      <div class="card card-high">
+        <div class="card-icon">📝</div>
+        <div class="card-title">作った後の評価・フィードバック</div>
+        <div class="card-desc">
+          CookingRecord に note はあるが「また作る？」「難しかった？」の定量評価がない。保存→調理転換率 KPI の次のレイヤー「再調理率」の計測に必要。
+        </div>
+        <div class="card-entities">候補: CookingRecord.rating / would_make_again / difficulty_actual</div>
+      </div>
+
+      <div class="card card-high">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">ユーザーカスタマイズレシピ</div>
+        <div class="card-desc">
+          「代替食材を選択したらレシピが更新される」UXがあるが、元レシピと改変版の区別がない。ユーザーが手を加えたレシピをどう扱うか設計が必要。
+        </div>
+        <div class="card-entities">候補: Recipe.is_customized / parent_recipe_id / RecipeVersion</div>
+      </div>
+
+      <div class="card card-med">
+        <div class="card-icon">💰</div>
+        <div class="card-title">コスト・食費管理</div>
+        <div class="card-desc">
+          ペルソナ「健康・コスパを重視」とあるが、レシピあたりのコスト概算・週次食費の見通しは設計されていない。買い物リストとの相性が良い。
+        </div>
+        <div class="card-entities">候補: Ingredient.unit_price / Recipe.estimated_cost / ShoppingList.total_budget</div>
+      </div>
+
+      <div class="card card-med">
+        <div class="card-icon">🍂</div>
+        <div class="card-title">旬・季節性</div>
+        <div class="card-desc">
+          旬の食材を使ったレシピの優先表示は、「発見」体験を豊かにする要素。現状タグに依存しているが、時期に応じた自動推薦に発展できる。
+        </div>
+        <div class="card-entities">候補: Ingredient.peak_seasons[] / Recipe.season_tags[]</div>
+      </div>
+
+      <div class="card card-med">
+        <div class="card-icon">🍳</div>
+        <div class="card-title">調理器具・設備制約</div>
+        <div class="card-desc">
+          「オーブンなし」「電子レンジのみ」などの設備制約はレシピの実現可能性に直結。UserPreference に含めるか専用の設計が必要。
+        </div>
+        <div class="card-entities">候補: UserPreference.available_equipment[] / Recipe.required_equipment[]</div>
+      </div>
+
+      <div class="card card-med">
+        <div class="card-icon">🧑‍🤝‍🧑</div>
+        <div class="card-title">人数・スケール変換</div>
+        <div class="card-desc">
+          一人暮らしが基本だが、「たまに友人を呼ぶ」シチュエーションがある。レシピの serving_size に対して人数指定で材料量を自動スケールする設計が必要。
+        </div>
+        <div class="card-entities">候補: Recipe.serving_size（追加）/ ShoppingItem での乗算処理</div>
+      </div>
+
+      <div class="card card-low">
+        <div class="card-icon">📊</div>
+        <div class="card-title">栄養バランス</div>
+        <div class="card-desc">
+          現在は意図的にスコープ外（PFCバランス詳細計算）だが、「ヘルシー」タグの精度向上には栄養メタデータが有効。将来の拡張余地として記録。
+        </div>
+        <div class="card-entities">スコープ外（v2.0以降 or 外部API連携）</div>
+      </div>
+
+      <div class="card card-low">
+        <div class="card-icon">📅</div>
+        <div class="card-title">作り置き・保存期間</div>
+        <div class="card-desc">
+          「作り置き」タグは存在するが、作ったものを冷蔵・冷凍で何日保存できるかのデータがない。週次献立計画での作り置き活用提案に必要。
+        </div>
+        <div class="card-entities">候補: Recipe.storage_days / Recipe.is_meal_prep_friendly</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== SECTION 5: NEXT STEPS ==================== -->
+  <section>
+    <h2>次のステップ</h2>
+    <div style="background:white;border:1px solid var(--sand);border-radius:10px;padding:24px;font-size:13px;line-height:2;">
+      <strong>Step 2 — オブジェクトクラス定義</strong><br>
+      上記の提案エンティティ（優先度順）でプロパティ・状態・UIとの対応を定義する。<br><br>
+      <strong>優先取り組みエンティティ（MVP）</strong><br>
+      Creator → Ingredient（正規化）→ Substitution → ExtractionJob → MealPlanEntry → bookmark_status → MoodTag 分離<br><br>
+      <strong>Step 3 — DBスキーマ更新</strong><br>
+      ARCHITECTURE.md の recipes / collections / cooking_records テーブルに追加・変更を反映。新規テーブルを設計。
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Uchimise Domain Map v1.0 &nbsp;·&nbsp; 2026年3月 &nbsp;·&nbsp;
+  <span>次のステップ → Step 2: オブジェクトクラス定義</span>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#dbeafe',
+      primaryBorderColor: '#3b82f6',
+      primaryTextColor: '#1e3a5f',
+      secondaryColor: '#dcfce7',
+      tertiaryColor: '#fff7ed',
+      lineColor: '#8B7355',
+      fontSize: '13px',
+      fontFamily: '"Helvetica Neue", Arial, sans-serif'
+    },
+    flowchart: { curve: 'basis', useMaxWidth: false }
+  });
+</script>
+</body>
+</html>

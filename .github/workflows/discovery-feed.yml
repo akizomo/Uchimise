@@ -1,0 +1,74 @@
+name: discovery-feed
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "refresh mode"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - whitelist_youtube
+          - whitelist_instagram
+          - search_keywords
+          - slow_public_sources
+  schedule:
+    # daily (whitelist youtube)
+    - cron: "0 6 * * *"
+    # daily (whitelist instagram)
+    - cron: "30 6 * * *"
+    # twice daily (keyword search)
+    - cron: "0 7,19 * * *"
+    # weekly (slow sources)
+    - cron: "0 8 * * 1"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Decide mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CRON="${{ github.event.schedule }}"
+          if [ "$CRON" = "0 6 * * *" ]; then
+            echo "mode=whitelist_youtube" >> "$GITHUB_OUTPUT"
+          elif [ "$CRON" = "30 6 * * *" ]; then
+            echo "mode=whitelist_instagram" >> "$GITHUB_OUTPUT"
+          elif [ "$CRON" = "0 7,19 * * *" ]; then
+            echo "mode=search_keywords" >> "$GITHUB_OUTPUT"
+          elif [ "$CRON" = "0 8 * * 1" ]; then
+            echo "mode=slow_public_sources" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=all" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refresh discovery feed
+        run: pnpm --filter @uchimise/api refresh:discovery-feed -- --mode=${{ steps.mode.outputs.mode }}
+

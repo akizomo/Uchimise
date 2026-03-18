@@ -1,0 +1,293 @@
+%%
+%% Uchimise — Domain Map (ER図)
+%% v1.0 · 2026年3月
+%%
+%% 凡例:
+%%   ✅ 既存テーブル（ARCHITECTURE.md 定義済み）
+%%   🆕 提案エンティティ（新規追加 or 正規化）
+%%   ⚠️  jsonb埋め込みから正規化を提案
+%%
+%% VS Code / Cursor: Mermaid Preview 拡張で表示
+%% GitHub: .mermaid ファイルとして自動レンダリング
+%%
+
+erDiagram
+
+  %% ============================
+  %% USER DOMAIN
+  %% ============================
+
+  users {
+    uuid    id           PK
+    text    email
+    text    display_name
+    timestamptz created_at
+  }
+
+  user_preferences {
+    uuid    id            PK  "🆕 新規"
+    uuid    user_id       FK
+    text[]  dietary_restrictions    "例: vegan / gluten_free"
+    text[]  dislikes                "嫌いな食材"
+    int     skill_level             "1-5"
+    int     max_cook_time_minutes   "最大許容調理時間"
+    int     discovery_appetite      "1-5 新発見への積極性"
+  }
+
+  %% ============================
+  %% CREATOR DOMAIN
+  %% ============================
+
+  creators {
+    uuid    id            PK  "🆕 新規（creator_name: text から昇格）"
+    text    name
+    text    platform              "youtube / instagram / tiktok"
+    text    platform_channel_id
+    text    profile_image_url
+    text[]  genre_tags            "得意ジャンル"
+    timestamptz created_at
+  }
+
+  user_follows_creator {
+    uuid    user_id         FK  "✅ 既存（構造）"
+    uuid    creator_id      FK  "🆕 creator_id FK に更新"
+    boolean notification_enabled
+    timestamptz followed_at
+  }
+
+  %% ============================
+  %% DISCOVERY DOMAIN
+  %% ============================
+
+  feed_content {
+    uuid    id            PK   "✅ 既存"
+    uuid    creator_id    FK   "🆕 FK追加（creator_name: text → FK）"
+    text    title
+    text    source_url
+    text    source_type          "youtube / instagram"
+    text    creator_name         "非正規化キャッシュ用"
+    text    thumbnail_url
+    text[]  tags
+    vector  embedding            "pgvector(1536)"
+    timestamptz published_at
+  }
+
+  %% ============================
+  %% RECIPE DOMAIN
+  %% ============================
+
+  recipes {
+    uuid    id                 PK   "✅ 既存"
+    uuid    user_id            FK
+    uuid    creator_id         FK   "🆕 FK追加（creator_name: text → FK）"
+    text    title
+    text    source_url
+    text    source_type              "youtube / instagram / tiktok / web"
+    text    creator_name             "非正規化キャッシュ用"
+    text    thumbnail_url
+    int     cook_time_minutes
+    int     serving_size             "🆕 フィールド追加"
+    text    phase                    "phase1 / phase2 / manual"
+    text    extraction_status        "pending / done / failed"
+    text    bookmark_status          "🆕 saved / want_to_cook / cooked"
+    text[]  tags
+    text[]  mood_tags                "🆕 あっさり/こってり/簡単/特別感"
+    timestamptz created_at
+  }
+
+  recipe_ingredients {
+    uuid    id           PK   "🆕 新規（recipes.ingredients jsonb → 正規化）"
+    uuid    recipe_id    FK
+    text    name
+    text    amount
+    text    unit
+    int     order
+    boolean is_optional
+  }
+
+  substitutions {
+    uuid    id              PK   "🆕 新規"
+    uuid    ingredient_id   FK   "recipe_ingredients.id"
+    text    alt_name
+    text    impact_note          "味・食感への影響コメント"
+    text    source               "ai_generated / manual"
+  }
+
+  recipe_steps {
+    uuid    id           PK   "🆕 新規（recipes.steps jsonb → 正規化検討）"
+    uuid    recipe_id    FK
+    int     order
+    text    text
+    int     duration_minutes     "任意"
+    text    tip                  "調理のコツ（任意）"
+  }
+
+  extraction_jobs {
+    uuid    id           PK   "🆕 新規（recipes.phase/extraction_status から分離）"
+    uuid    recipe_id    FK
+    text    phase              "phase1 / phase2"
+    text    status             "pending / processing / done / failed"
+    text    error_code         "private_post / no_caption / quota_exceeded / llm_error"
+    int     attempts
+    timestamptz started_at
+    timestamptz completed_at
+  }
+
+  %% ============================
+  %% ORGANIZATION DOMAIN
+  %% ============================
+
+  collections {
+    uuid    id         PK  "✅ 既存"
+    uuid    user_id    FK
+    text    name
+    boolean is_auto
+    timestamptz created_at
+  }
+
+  collection_recipes {
+    uuid    collection_id   FK   "✅ 既存"
+    uuid    recipe_id       FK
+    timestamptz added_at
+  }
+
+  cuisine_genres {
+    uuid    id          PK   "🆕 新規（tags[] に埋没していたジャンルを正規化）"
+    text    name              "和食 / 洋食 / 中華 / エスニック / イタリアン ..."
+    text    icon_name
+  }
+
+  recipe_genres {
+    uuid    recipe_id   FK   "🆕 中間テーブル"
+    uuid    genre_id    FK
+  }
+
+  %% ============================
+  %% MEAL PLAN DOMAIN
+  %% ============================
+
+  meal_plans {
+    uuid    id               PK  "✅ 既存（collections に統合されていた部分を分離）"
+    uuid    user_id          FK
+    date    week_start_date
+    timestamptz created_at
+  }
+
+  meal_plan_entries {
+    uuid    id             PK   "🆕 新規"
+    uuid    meal_plan_id   FK
+    uuid    recipe_id      FK
+    date    date
+    text    meal_slot            "breakfast / lunch / dinner"
+  }
+
+  shopping_lists {
+    uuid    id              PK   "🆕 新規"
+    uuid    user_id         FK
+    uuid    meal_plan_id    FK   "任意（手動作成も可）"
+    timestamptz generated_at
+    text    note
+  }
+
+  shopping_items {
+    uuid    id               PK   "🆕 新規"
+    uuid    list_id          FK
+    text    ingredient_name
+    text    amount
+    text    unit
+    text    category               "野菜 / 肉・魚 / 調味料 / 乳製品 / ..."
+    boolean is_checked
+    boolean is_manually_added
+  }
+
+  %% ============================
+  %% PANTRY DOMAIN (v1.5)
+  %% ============================
+
+  pantry_items {
+    uuid    id           PK   "🆕 新規（v1.5）"
+    uuid    user_id      FK
+    text    name
+    text    amount
+    text    unit
+    text    category
+    date    expiry_date
+    timestamptz added_at
+  }
+
+  %% ============================
+  %% COOKING DOMAIN
+  %% ============================
+
+  cooking_records {
+    uuid    id           PK   "✅ 既存"
+    uuid    user_id      FK
+    uuid    recipe_id    FK
+    timestamptz cooked_at
+    text    note
+    text    photo_url          "🆕 フィールド追加"
+    int     rating             "🆕 1-5（再調理率KPI計測用）"
+    boolean would_make_again   "🆕 また作る？"
+  }
+
+  cooking_sessions {
+    uuid    id                   PK   "🆕 新規（議論余地あり）"
+    uuid    cooking_record_id    FK
+    int     current_step_order
+    timestamptz started_at
+    jsonb   timer_state
+  }
+
+  %% ============================
+  %% GROWTH DOMAIN
+  %% ============================
+
+  user_skill_stats {
+    uuid    user_id      FK   "🆕 新規"
+    uuid    genre_id     FK
+    int     cook_count
+    timestamptz last_cooked_at
+  }
+
+  %% ============================
+  %% RELATIONSHIPS
+  %% ============================
+
+  users                ||--o{ recipes                : "保存する"
+  users                ||--o{ collections            : "作成する"
+  users                ||--|| user_preferences       : "持つ"
+  users                ||--o{ user_follows_creator   : "フォローする"
+  users                ||--o{ cooking_records        : "記録する"
+  users                ||--o{ meal_plans             : "計画する"
+  users                ||--o{ pantry_items           : "管理する"
+  users                ||--o{ shopping_lists         : "持つ"
+
+  creators             ||--o{ recipes                : "作成元"
+  creators             ||--o{ feed_content           : "提供する"
+  creators             ||--o{ user_follows_creator   : "フォローされる"
+
+  recipes              ||--o{ recipe_ingredients     : "含む"
+  recipes              ||--o{ recipe_steps           : "構成する"
+  recipes              ||--o{ extraction_jobs        : "処理される"
+  recipes              ||--o{ collection_recipes     : "所属する"
+  recipes              ||--o{ recipe_genres          : "分類される"
+  recipes              ||--o{ meal_plan_entries      : "使われる"
+  recipes              ||--o{ cooking_records        : "調理される"
+
+  recipe_ingredients   ||--o{ substitutions          : "代替案を持つ"
+
+  collections          ||--o{ collection_recipes     : "含む"
+
+  cuisine_genres       ||--o{ recipe_genres          : "分類に使われる"
+  cuisine_genres       ||--o{ user_skill_stats       : "習熟度を記録"
+
+  meal_plans           ||--o{ meal_plan_entries      : "含む"
+  meal_plans           ||--o| shopping_lists         : "生成する"
+
+  shopping_lists       ||--o{ shopping_items         : "含む"
+
+  cooking_records      ||--o| cooking_sessions       : "セッションを持つ"
+  cooking_records      }o--|| user_skill_stats       : "習熟度に貢献"
+
+  user_skill_stats     }o--|| users                  : "集計元"
+  user_skill_stats     }o--|| cuisine_genres         : "ジャンル参照"

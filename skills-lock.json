@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "design-system-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "5f8c9b187e77fcb31db78da2f7b55f905dcd2357454624cac93f00c766ace346"
+    },
+    "information-architecture": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "computedHash": "6f3b7bda59ad39507f94df6e5714fa5280c156c780659f821481f8da15546d40"
+    }
+  }
+}

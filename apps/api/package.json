@@ -1,0 +1,40 @@
+{
+  "name": "@uchimise/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit && tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "jest --passWithNoTests",
+    "seed:embeddings": "tsx scripts/seed-embeddings.ts",
+    "refresh:discovery-feed": "tsx scripts/refresh-discovery-feed.ts",
+    "ingest:feed": "tsx src/scripts/ingestFeed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@hono/node-server": "^1.14.0",
+    "@hono/zod-validator": "^0.4.3",
+    "@supabase/supabase-js": "^2.47.10",
+    "bullmq": "^5.34.8",
+    "dotenv": "^16.6.1",
+    "hono": "^4.7.4",
+    "openai": "^4.77.0",
+    "youtube-transcript": "^1.3.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.7",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.18.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

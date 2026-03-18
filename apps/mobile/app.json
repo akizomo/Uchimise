@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Uchimise",
+    "slug": "uchimise",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAEEDA"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.uchimise.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAEEDA"
+      },
+      "package": "com.uchimise.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#EF9F27"
+        }
+      ]
+    ],
+    "scheme": "uchimise"
+  }
+}
