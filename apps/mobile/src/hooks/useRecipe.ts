@@ -11,7 +11,14 @@ export interface RecipeDetail {
   thumbnail_url: string | null;
   cook_time_minutes: number | null;
   extraction_status: 'pending' | 'done' | 'failed';
-  ingredients: Array<{ name: string; amount?: string; unit?: string; isSubstituted: boolean }>;
+  ingredients: Array<{
+    name: string;
+    amount?: string;
+    unit?: string;
+    isSubstituted: boolean;
+    /** Phase 2 で抽出された代替食材候補。未取得時は undefined */
+    alternatives?: string[];
+  }>;
   steps: Array<{ order: number; text: string }>;
   tags: string[];
 }

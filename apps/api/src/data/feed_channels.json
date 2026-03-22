@@ -1,13 +1,14 @@
 {
   "_comment": "発見フィード ソースチャンネルマスター — discovery_feed_sources.md 準拠",
   "_lastUpdated": "2026-03-18",
+  "_tagNote": "tags配列はUIタグ（discover.tsx の DISCOVER_TAGS key）と一致させること。ingestion時にfeed_content.tagsに格納される。",
   "youtube": [
     {
       "channelId": "UCW01sMEVYQdhcvkrhbxdBpw",
       "handle": "@ryuji_bazurecipe",
       "name": "料理研究家リュウジのバズレシピ",
       "pattern": "D",
-      "tags": ["時短", "今日作れそう", "おつまみ"],
+      "tags": ["時短", "今日作れそう", "おつまみ", "手軽に済ませたい", "しっかり食べたい"],
       "maxResults": 5,
       "active": true
     },
@@ -16,7 +17,7 @@
       "handle": "@kohkentetsukitchen",
       "name": "Koh Kentetsu Kitchen",
       "pattern": "B",
-      "tags": ["韓国料理", "週末向け", "今日作れそう"],
+      "tags": ["韓国料理", "週末向け", "今日作れそう", "未知の国の料理", "初めての食材", "ちょっと特別に", "週末の昼に"],
       "maxResults": 3,
       "active": true
     },
@@ -25,7 +26,7 @@
       "handle": "@COCOCORO_Ch",
       "name": "COCOCOROチャンネル",
       "pattern": "C",
-      "tags": ["週末向け", "ヘルシー"],
+      "tags": ["週末向け", "ヘルシー", "作ったことのない調理法", "ちょっと特別に", "週末の昼に", "さっぱりと"],
       "maxResults": 3,
       "active": true
     },
@@ -34,7 +35,7 @@
       "handle": "@nigiricco",
       "name": "にぎりっ娘。",
       "pattern": "D",
-      "tags": ["作り置き", "時短"],
+      "tags": ["作り置き", "時短", "手軽に済ませたい"],
       "maxResults": 3,
       "active": true
     },
@@ -43,7 +44,7 @@
       "handle": "@haruanne22",
       "name": "はるあん",
       "pattern": "E",
-      "tags": ["週末向け", "スイーツ"],
+      "tags": ["週末向け", "スイーツ", "誰かに作りたい", "ちょっと特別に", "週末の昼に"],
       "maxResults": 3,
       "active": true
     },
@@ -52,7 +53,7 @@
       "handle": "@sirogohan",
       "name": "白ごはん.com",
       "pattern": "A",
-      "tags": ["今日作れそう", "ヘルシー", "作り置き"],
+      "tags": ["今日作れそう", "ヘルシー", "作り置き", "今が旬", "さっぱりと"],
       "maxResults": 3,
       "active": true
     },
@@ -61,7 +62,7 @@
       "handle": "@arigakaoru",
       "name": "有賀薫",
       "pattern": "A",
-      "tags": ["今日作れそう", "ヘルシー"],
+      "tags": ["今日作れそう", "ヘルシー", "今が旬", "さっぱりと"],
       "maxResults": 2,
       "active": true
     },
@@ -70,7 +71,7 @@
       "handle": "@hirosankitchen",
       "name": "ひろさんキッチン",
       "pattern": "A",
-      "tags": ["週末向け", "ヘルシー"],
+      "tags": ["週末向け", "ヘルシー", "今が旬", "週末の昼に", "さっぱりと"],
       "maxResults": 2,
       "active": true
     },
@@ -79,7 +80,7 @@
       "handle": "@nhk_kyounoryouri",
       "name": "NHKきょうの料理 公式",
       "pattern": "A",
-      "tags": ["今日作れそう", "ヘルシー", "週末向け"],
+      "tags": ["今日作れそう", "ヘルシー", "週末向け", "今が旬", "週末の昼に", "さっぱりと"],
       "maxResults": 2,
       "active": true
     },
@@ -88,7 +89,7 @@
       "handle": "@IndoCurryKo",
       "name": "印度カリー子",
       "pattern": "B",
-      "tags": ["スパイスの旅", "週末向け", "今日作れそう"],
+      "tags": ["スパイスの旅", "週末向け", "今日作れそう", "未知の国の料理", "初めての食材", "ちょっと特別に", "週末の昼に"],
       "maxResults": 3,
       "active": true
     },
@@ -97,7 +98,7 @@
       "handle": "@taiwancooking",
       "name": "我が家の台湾料理 Yuuka Chen",
       "pattern": "B",
-      "tags": ["台湾家庭料理", "週末向け"],
+      "tags": ["台湾家庭料理", "週末向け", "未知の国の料理", "初めての食材", "ちょっと特別に", "週末の昼に"],
       "maxResults": 2,
       "active": true
     },
@@ -106,7 +107,7 @@
       "handle": "@amazingembassycooking",
       "name": "大使館シェフのおいしいレシピ",
       "pattern": "B",
-      "tags": ["中東の食卓", "ヨーロッパ家庭料理", "ラテン料理", "東南アジアの食卓", "週末向け"],
+      "tags": ["中東の食卓", "ヨーロッパ家庭料理", "ラテン料理", "東南アジアの食卓", "週末向け", "未知の国の料理", "初めての食材", "ちょっと特別に", "週末の昼に"],
       "maxResults": 3,
       "active": true
     },
@@ -115,7 +116,7 @@
       "handle": "@watanabemaki",
       "name": "ワタナベマキ",
       "pattern": "E",
-      "tags": ["週末向け", "ヨーロッパ家庭料理"],
+      "tags": ["週末向け", "ヨーロッパ家庭料理", "誰かに作りたい", "ちょっと特別に", "週末の昼に"],
       "maxResults": 2,
       "active": true
     },
@@ -124,7 +125,7 @@
       "handle": "@marukawamiso",
       "name": "マルカワみそ公式",
       "pattern": "C",
-      "tags": ["作り置き", "週末向け"],
+      "tags": ["作り置き", "週末向け", "作ったことのない調理法", "ちょっと特別に", "週末の昼に"],
       "maxResults": 1,
       "active": true
     }
@@ -134,7 +135,7 @@
       "username": "israbonita",
       "name": "mariko",
       "pattern": "D",
-      "tags": ["時短", "今日作れそう", "ヘルシー"],
+      "tags": ["時短", "今日作れそう", "ヘルシー", "手軽に済ませたい", "さっぱりと"],
       "active": true,
       "_note": "Instagram Graph API requires Business/Creator account approval. Verify access before enabling."
     },
@@ -142,7 +143,7 @@
       "username": "mtmtharb",
       "name": "まみ",
       "pattern": "D",
-      "tags": ["時短", "今日作れそう"],
+      "tags": ["時短", "今日作れそう", "手軽に済ませたい"],
       "active": true,
       "_note": "Instagram Graph API requires Business/Creator account approval."
     },
@@ -150,7 +151,7 @@
       "username": "rinaty_cooking",
       "name": "りなてぃ",
       "pattern": "D",
-      "tags": ["作り置き", "週末向け"],
+      "tags": ["作り置き", "週末向け", "手軽に済ませたい", "週末の昼に"],
       "active": true,
       "_note": "Instagram Graph API requires Business/Creator account approval."
     },
@@ -158,14 +159,14 @@
       "username": "tastemade_japan",
       "name": "Tastemade Japan",
       "pattern": "E",
-      "tags": ["週末向け"],
+      "tags": ["週末向け", "誰かに作りたい", "ちょっと特別に", "週末の昼に"],
       "active": true
     },
     {
       "username": "hungryhuskyjp",
       "name": "ハングリーハスキー",
       "pattern": "B",
-      "tags": ["中東の食卓", "ラテン料理", "週末向け", "今日作れそう"],
+      "tags": ["中東の食卓", "ラテン料理", "週末向け", "今日作れそう", "未知の国の料理", "初めての食材", "ちょっと特別に", "週末の昼に"],
       "active": true
     }
   ]

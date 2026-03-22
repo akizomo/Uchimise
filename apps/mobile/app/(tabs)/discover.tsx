@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -9,78 +11,117 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Bookmark, BookmarkCheck } from 'lucide-react-native';
 
-import { spacing, textStyle } from '@uchimise/tokens';
-import { ActivityIndicator, AppBar, Chip, RecipeCard, useScrollHeader, useTheme } from '@uchimise/ui';
+import { colors, spacing, textStyle } from '@uchimise/tokens';
+import { ActivityIndicator, Icon, useTheme } from '@uchimise/ui';
 
 import { useFeed } from '../../src/hooks/useFeed';
 import { DiscoverSkeleton } from '../../src/components/common';
 import { useAuth } from '../../src/hooks/useAuth';
-import { apiFetch } from '../../src/lib/apiClient';
 
-const MOOD_TAGS = ['今日作れそう', '週末向け', '時短', '作り置き', 'ヘルシー'];
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+// --- Tag definitions ---
+// key は DB の feed_content.tags に格納される実際のタグ値と一致させる。
+// 'for_you' は特別値（フィルターなし・全件表示）。
+
+type TagType = 'normal' | 'discover';
+
+interface Tag {
+  key: string;
+  label: string;
+  type: TagType;
+}
+
+const DISCOVER_TAGS: Tag[] = [
+  { key: 'for_you',              label: 'For you',              type: 'normal' },
+  { key: 'さっぱりと',            label: 'さっぱりと',            type: 'normal' },
+  { key: 'しっかり食べたい',       label: 'しっかり食べたい',       type: 'normal' },
+  { key: 'ちょっと特別に',         label: 'ちょっと特別に',         type: 'normal' },
+  { key: '手軽に済ませたい',       label: '手軽に済ませたい',       type: 'normal' },
+  { key: '初めての食材',           label: '初めての食材',           type: 'discover' },
+  { key: '未知の国の料理',         label: '未知の国の料理',         type: 'discover' },
+  { key: '作ったことのない調理法', label: '作ったことのない調理法', type: 'discover' },
+  { key: '今が旬',                label: '今が旬',                type: 'normal' },
+  { key: '週末の昼に',             label: '週末の昼に',             type: 'normal' },
+  { key: '誰かに作りたい',         label: '誰かに作りたい',         type: 'normal' },
+];
+
+// --- FeedCard ---
+
+interface FeedCardProps {
+  title: string;
+  thumbnailUrl?: string | null;
+  isFirstChallenge?: boolean;
+  isSaved?: boolean;
+  onPress?: () => void;
+  onSavePress?: () => void;
+}
+
+function FeedCard({ title, thumbnailUrl, isFirstChallenge, isSaved, onPress, onSavePress }: FeedCardProps) {
+  return (
+    <Pressable style={styles.feedCard} onPress={onPress}>
+      <View style={styles.feedCardImageContainer}>
+        {thumbnailUrl ? (
+          <Image source={{ uri: thumbnailUrl }} style={styles.feedCardImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.feedCardImage, { backgroundColor: colors.ivory }]} />
+        )}
+
+        {isFirstChallenge && (
+          <View style={styles.challengeBadge}>
+            <Text style={styles.challengeBadgeText}>✦ 初挑戦</Text>
+          </View>
+        )}
+
+        <Pressable
+          style={styles.bookmarkButton}
+          onPress={onSavePress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon
+            as={isSaved ? BookmarkCheck : Bookmark}
+            size={16}
+            color={isSaved ? 'tint' : colors.cream}
+            strokeWidth={isSaved ? 2 : 1.5}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.feedCardFooter}>
+        <Text style={styles.feedCardTitle} numberOfLines={2}>{title}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// --- DiscoverScreen ---
 
 export default function DiscoverScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const { scrollY, onScroll: onScrollHeader } = useScrollHeader();
-  const [healthStatus, setHealthStatus] = useState<string>('pending');
+  const [selectedTag, setSelectedTag] = useState<string>('for_you');
   const { session, isLoading: isAuthLoading } = useAuth();
-  const [feedDebug, setFeedDebug] = useState<string>('');
 
-  const activeTags = selectedMood ? [selectedMood] : undefined;
+  // 'for_you' は全件表示（タグフィルターなし）
+  const activeTags = selectedTag !== 'for_you' ? [selectedTag] : undefined;
+
   const {
     data,
     isLoading,
     isError,
-    error,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
   } = useFeed(activeTags, Boolean(session) && !isAuthLoading);
 
-  const items = (data?.pages.flatMap((page) => page.data) ?? []).filter((item): item is NonNullable<typeof item> => item != null);
+  const items = (data?.pages.flatMap((page) => page.data) ?? []).filter(
+    (item): item is NonNullable<typeof item> => item != null,
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${API_BASE}/health`)
-      .then(async (r) => {
-        const text = await r.text();
-        if (cancelled) return;
-        setHealthStatus(`${r.status} ${text}`.slice(0, 120));
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        setHealthStatus(`error ${msg}`.slice(0, 120));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    // When the feed is empty, fetch debug info once to identify why.
-    if (!session || isAuthLoading) return;
-    if (isLoading || isError) return;
-    if (items.length !== 0) return;
-    if (feedDebug) return;
-
-    apiFetch<{ debug?: unknown; success: boolean }>('/api/feed?debug=1&limit=1')
-      .then((res) => {
-        const dbg = (res as { debug?: unknown }).debug;
-        setFeedDebug(dbg ? JSON.stringify(dbg) : 'no debug payload');
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        setFeedDebug(`debug fetch failed: ${msg}`);
-      });
-  }, [session, isAuthLoading, isLoading, isError, items.length, feedDebug]);
+  const leftColumn = items.filter((_, i) => i % 2 === 0);
+  const rightColumn = items.filter((_, i) => i % 2 === 1);
 
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    onScrollHeader(event);
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 300;
     if (isNearBottom && hasNextPage && !isFetchingNextPage) {
@@ -88,32 +129,63 @@ export default function DiscoverScreen() {
     }
   }
 
+  const selectedTagLabel = DISCOVER_TAGS.find((t) => t.key === selectedTag)?.label ?? '';
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bgPage }]}>
-      <AppBar title="発見" variant="large" scrollY={scrollY} />
+      {/* 固定ヘッダー */}
+      <View style={[styles.fixedHeader, { backgroundColor: theme.bgPage }]}>
+        {/* 検索バー */}
+        <Pressable
+          style={[styles.searchBar, { backgroundColor: colors.cream, borderColor: colors.honey }]}
+          onPress={() => { /* TODO: 全画面検索へ遷移 */ }}
+        >
+          <Text style={[styles.searchPlaceholder, { color: colors.mist }]}>
+            レシピ・食材・気分で探す
+          </Text>
+        </Pressable>
 
+        {/* タグ横スクロール */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tagRow}
+        >
+          {DISCOVER_TAGS.map((tag) => {
+            const isSelected = selectedTag === tag.key;
+            const label = tag.type === 'discover' ? `✦ ${tag.label}` : tag.label;
+            return (
+              <Pressable
+                key={tag.key}
+                style={[
+                  styles.tagChip,
+                  isSelected
+                    ? { backgroundColor: colors.espresso, borderColor: colors.espresso }
+                    : { backgroundColor: colors.cream, borderColor: colors.honey },
+                ]}
+                onPress={() => setSelectedTag(tag.key)}
+              >
+                <Text
+                  style={[
+                    styles.tagLabel,
+                    { color: isSelected ? colors.cream : colors.espresso },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* フィード */}
       <ScrollView
         onScroll={handleScroll}
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 気分タグフィルター */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.moodTagRow}
-        >
-          {MOOD_TAGS.map((tag) => (
-            <Chip
-              key={tag}
-              label={tag}
-              selected={selectedMood === tag}
-              onPress={() => setSelectedMood(selectedMood === tag ? null : tag)}
-            />
-          ))}
-        </ScrollView>
-
         {isLoading ? (
           <DiscoverSkeleton />
         ) : isError ? (
@@ -121,56 +193,49 @@ export default function DiscoverScreen() {
             <Text style={[textStyle.body, { color: theme.labelTertiary, textAlign: 'center' }]}>
               読み込めませんでした。接続を確認して、もう一度試してみてください。
             </Text>
-            <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-              API: {API_BASE}
-            </Text>
-            <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-              health: {healthStatus}
-            </Text>
-            {error instanceof Error && (
-              <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-                {error.message}
-              </Text>
-            )}
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[textStyle.body, { color: theme.labelTertiary, textAlign: 'center' }]}>
-              {selectedMood
-                ? `「${selectedMood}」に合うレシピが見つかりませんでした。別の言葉で探してみてください。`
+              {selectedTag !== 'for_you'
+                ? `「${selectedTagLabel}」に合うレシピが見つかりませんでした。別の言葉で探してみてください。`
                 : 'まだ棚が空です。SNSで見つけたレシピを、ここに並べてみませんか。'}
             </Text>
-            <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-              API: {API_BASE}
-            </Text>
-            <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-              health: {healthStatus}
-            </Text>
-            {feedDebug ? (
-              <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
-                debug: {feedDebug}
-              </Text>
-            ) : null}
           </View>
         ) : (
-          <View style={styles.grid}>
-            {items.map((item) => (
-              <View key={item.id} style={styles.gridItem}>
-                <RecipeCard
+          <View style={styles.masonryGrid}>
+            <View style={styles.masonryColumn}>
+              {leftColumn.map((item) => (
+                <FeedCard
+                  key={item.id}
                   title={item.title}
-                  creatorName={item.creatorName}
-                  sourceType={item.sourceType}
                   thumbnailUrl={item.thumbnailUrl}
                   onPress={() => router.push(`/feed/${item.id}`)}
-                  onSavePress={() => router.push(`/(modal)/extract?url=${encodeURIComponent(item.sourceUrl)}`)}
+                  onSavePress={() =>
+                    router.push(`/(modal)/extract?url=${encodeURIComponent(item.sourceUrl)}`)
+                  }
                 />
-              </View>
-            ))}
-            {isFetchingNextPage && (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" />
-              </View>
-            )}
+              ))}
+            </View>
+            <View style={styles.masonryColumn}>
+              {rightColumn.map((item) => (
+                <FeedCard
+                  key={item.id}
+                  title={item.title}
+                  thumbnailUrl={item.thumbnailUrl}
+                  onPress={() => router.push(`/feed/${item.id}`)}
+                  onSavePress={() =>
+                    router.push(`/(modal)/extract?url=${encodeURIComponent(item.sourceUrl)}`)
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {isFetchingNextPage && (
+          <View style={styles.loadingMore}>
+            <ActivityIndicator size="small" />
           </View>
         )}
       </ScrollView>
@@ -180,22 +245,99 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxl },
-  moodTagRow: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+  fixedHeader: {
     gap: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  searchBar: {
+    marginHorizontal: spacing.xl,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  searchPlaceholder: {
+    ...textStyle.bodySm,
+  },
+  tagRow: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  tagChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    borderWidth: 0.5,
+  },
+  tagLabel: {
+    ...textStyle.bodySm,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
   },
   emptyState: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxl,
     alignItems: 'center',
   },
-  grid: {
-    paddingHorizontal: spacing.xl,
-    gap: spacing.md,
+  masonryGrid: {
+    flexDirection: 'row',
+    padding: 10,
+    gap: 6,
   },
-  gridItem: { width: '100%' },
+  masonryColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  feedCard: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: colors.ivory,
+  },
+  feedCardImageContainer: {
+    position: 'relative',
+  },
+  feedCardImage: {
+    width: '100%',
+    aspectRatio: 0.85,
+  },
+  challengeBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: colors.ochre,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  challengeBadgeText: {
+    color: colors.cream,
+    fontSize: 8,
+    fontWeight: '500',
+  },
+  bookmarkButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(42,22,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedCardFooter: {
+    padding: spacing.sm,
+  },
+  feedCardTitle: {
+    ...textStyle.bodySm,
+    color: colors.espresso,
+    fontWeight: '500',
+    fontSize: 13,
+  },
   loadingMore: {
     paddingVertical: spacing.xl,
     alignItems: 'center',

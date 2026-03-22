@@ -69,7 +69,7 @@ export default function CookingModeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bgPage }]}>
         <View style={styles.completedContainer}>
-          <Text style={[textStyle.h3, { color: theme.label, textAlign: 'center' }]}>
+          <Text style={[textStyle.title, { color: theme.label, textAlign: 'center' }]}>
             できあがりました。
           </Text>
           <Text style={[textStyle.body, { color: theme.labelSecondary, textAlign: 'center' }]}>
@@ -112,7 +112,7 @@ export default function CookingModeScreen() {
           </View>
 
           <ScrollView contentContainerStyle={styles.stepContent}>
-            <Text style={[textStyle.h3, { color: theme.label }]}>
+            <Text style={[textStyle.title, { color: theme.label }]}>
               {steps[currentStepIndex]?.text}
             </Text>
           </ScrollView>

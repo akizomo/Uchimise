@@ -27,12 +27,45 @@ collectionsRoute.get('/', async (c) => {
 
   const { data, error } = await supabase
     .from('collections')
-    .select('*, collection_recipes(recipe_id, position)')
+    .select(`
+      id, name, is_auto, created_at, user_id,
+      collection_recipes(
+        position,
+        recipes(thumbnail_url)
+      )
+    `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) return c.json({ success: false, error: 'Failed to fetch collections' }, 500);
-  return c.json({ success: true, data });
+
+  const enriched = (data ?? []).map((item) => {
+    const collectionRecipes = (item.collection_recipes ?? []) as Array<{
+      position: number;
+      recipes: { thumbnail_url: string | null } | { thumbnail_url: string | null }[] | null;
+    }>;
+    const preview_thumbnails = collectionRecipes
+      .sort((a, b) => a.position - b.position)
+      .slice(0, 4)
+      .map((cr) => {
+        const r = cr.recipes;
+        if (!r) return null;
+        if (Array.isArray(r)) return r[0]?.thumbnail_url ?? null;
+        return r.thumbnail_url;
+      })
+      .filter((url): url is string => Boolean(url));
+    return {
+      id: item.id,
+      name: item.name,
+      is_auto: item.is_auto,
+      created_at: item.created_at,
+      user_id: item.user_id,
+      recipe_count: collectionRecipes.length,
+      preview_thumbnails,
+    };
+  });
+
+  return c.json({ success: true, data: enriched });
 });
 
 // POST /api/collections

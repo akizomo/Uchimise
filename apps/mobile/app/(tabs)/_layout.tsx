@@ -32,17 +32,6 @@ export default function TabLayout() {
       ),
     },
     {
-      key: 'collections',
-      label: 'コレクション',
-      icon: (isActive) => (
-        <Ionicons
-          name={isActive ? 'albums' : 'albums-outline'}
-          size={20}
-          color={isActive ? theme.navIconActive : theme.navIconInactive}
-        />
-      ),
-    },
-    {
       key: 'me',
       label: '自分',
       icon: (isActive) => (
@@ -76,7 +65,6 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="plan" />
       <Tabs.Screen name="discover" />
-      <Tabs.Screen name="collections" />
       <Tabs.Screen name="me" />
     </Tabs>
   );

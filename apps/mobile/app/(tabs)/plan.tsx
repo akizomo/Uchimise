@@ -9,9 +9,10 @@ import {
   View,
 } from 'react-native';
 
-import { radius, spacing, textStyle } from '@uchimise/tokens';
+import { colors, spacing, textStyle } from '@uchimise/tokens';
 import {
   AppBar,
+  CollectionCard,
   PhaseBanner,
   RecipeCard,
   SegmentedControl,
@@ -33,7 +34,6 @@ import {
 } from '../../src/hooks/useMealPlans';
 import { useRemoveFromMeal } from '../../src/hooks/useRemoveFromMeal';
 import { useCollections } from '../../src/hooks/useCollections';
-import { useFeed } from '../../src/hooks/useFeed';
 import { ShoppingList } from '../../src/components/plan/ShoppingList';
 import { useRealtimePhase2WithInvalidation } from '../../src/hooks/useRealtimePhase2';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -49,9 +49,10 @@ const SEGMENT_OPTIONS = ['レシピ', '買い出し'];
 interface WeekCalendarProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  planDates?: Set<string>;
 }
 
-function WeekCalendar({ selectedDate, onSelectDate }: WeekCalendarProps) {
+function WeekCalendar({ selectedDate, onSelectDate, planDates }: WeekCalendarProps) {
   const theme = useTheme();
   const today = new Date();
   const todayStr = toDateString(today);
@@ -70,8 +71,9 @@ function WeekCalendar({ selectedDate, onSelectDate }: WeekCalendarProps) {
   return (
     <View style={[styles.weekCalendar, { borderBottomColor: theme.border }]}>
       {days.map((day) => {
-        const isSelected = day.dateStr === selectedDate;
         const isToday = day.dateStr === todayStr;
+        const isSelected = day.dateStr === selectedDate;
+        const hasPlan = planDates?.has(day.dateStr) ?? false;
         return (
           <Pressable
             key={day.dateStr}
@@ -82,23 +84,24 @@ function WeekCalendar({ selectedDate, onSelectDate }: WeekCalendarProps) {
             <View
               style={[
                 styles.dateCircle,
-                isSelected && { backgroundColor: theme.tint },
-                !isSelected && isToday && { borderWidth: 1, borderColor: theme.tint },
+                isToday && { backgroundColor: colors.espresso },
+                !isToday && isSelected && { borderWidth: 1, borderColor: colors.ochre },
               ]}
             >
               <Text
                 style={[
                   styles.dateText,
-                  isSelected
-                    ? { color: '#FFFFFF' }
-                    : isToday
-                    ? { color: theme.tint }
+                  isToday
+                    ? { color: colors.cream }
+                    : isSelected
+                    ? { color: colors.ochre }
                     : { color: theme.labelSecondary },
                 ]}
               >
                 {day.date}
               </Text>
             </View>
+            {hasPlan ? <View style={styles.mealDot} /> : <View style={styles.mealDotPlaceholder} />}
           </Pressable>
         );
       })}
@@ -155,94 +158,31 @@ function SlotRow({ slot, plan, isCurrent, onPressRecipe, onRemove }: SlotRowProp
   );
 }
 
-// --- CollectionsStrip ---
+// --- CollectionsList ---
 
-interface CollectionsStripProps {
-  onPressAll: () => void;
+interface CollectionsListProps {
   onPressCollection: (id: string) => void;
 }
 
-function CollectionsStrip({ onPressAll, onPressCollection }: CollectionsStripProps) {
+function CollectionsList({ onPressCollection }: CollectionsListProps) {
   const theme = useTheme();
   const { data: collections } = useCollections();
 
   if (!collections || collections.length === 0) return null;
 
   return (
-    <View style={styles.stripSection}>
-      <View style={styles.stripHeader}>
-        <Text style={[styles.stripTitle, { color: theme.label }]}>棚</Text>
-        <Pressable onPress={onPressAll}>
-          <Text style={[styles.stripSeeAll, { color: theme.tint }]}>すべて見る</Text>
-        </Pressable>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stripScroll}
-      >
-        {collections.map((col) => (
-          <Pressable
-            key={col.id}
-            style={[styles.collectionChip, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}
-            onPress={() => onPressCollection(col.id)}
-          >
-            <Text style={[styles.chipName, { color: theme.label }]} numberOfLines={1}>
-              {col.name}
-            </Text>
-            <Text style={[styles.chipCount, { color: theme.labelTertiary }]}>
-              {col.recipe_count}品
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-// --- DiscoverStrip ---
-
-const DISCOVER_PREVIEW_COUNT = 5;
-
-interface DiscoverStripProps {
-  onSaveItem: (sourceUrl: string) => void;
-  onPressAll: () => void;
-}
-
-function DiscoverStrip({ onSaveItem, onPressAll }: DiscoverStripProps) {
-  const theme = useTheme();
-  const { data } = useFeed();
-
-  const items = (data?.pages[0]?.data ?? []).slice(0, DISCOVER_PREVIEW_COUNT);
-  if (items.length === 0) return null;
-
-  return (
-    <View style={styles.stripSection}>
-      <View style={styles.stripHeader}>
-        <Text style={[styles.stripTitle, { color: theme.label }]}>今日の発見</Text>
-        <Pressable onPress={onPressAll}>
-          <Text style={[styles.stripSeeAll, { color: theme.tint }]}>もっと見る</Text>
-        </Pressable>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stripScroll}
-      >
-        {items.map((item) => (
-          <View key={item.id} style={styles.discoverCardWrapper}>
-            <RecipeCard
-              title={item.title}
-              creatorName={item.creatorName}
-              sourceType={item.sourceType}
-              isSaved={false}
-              onSavePress={() => onSaveItem(item.sourceUrl)}
-            />
-          </View>
-        ))}
-      </ScrollView>
+    <View style={styles.collectionsSection}>
+      <Text style={[styles.sectionTitle, { color: theme.label }]}>棚</Text>
+      {collections.map((col) => (
+        <CollectionCard
+          key={col.id}
+          name={col.name}
+          recipeCount={col.recipe_count}
+          isAuto={col.is_auto}
+          thumbnailUrls={col.preview_thumbnails}
+          onPress={() => onPressCollection(col.id)}
+        />
+      ))}
     </View>
   );
 }
@@ -294,6 +234,8 @@ export default function PlanScreen() {
   const isToday = selectedDate === todayStr;
   const currentSlot = getCurrentMealSlot();
 
+  const planDates = new Set((mealPlans ?? []).map((p) => p.planned_date));
+
   // Whether any recipe has pending extraction
   const hasUnconfirmed =
     (mealPlans ?? []).some((p) => p.recipes.extraction_status !== 'done') ?? false;
@@ -305,7 +247,7 @@ export default function PlanScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bgPage }]}>
       <AppBar title="献立" variant="large" scrollY={scrollY} />
 
-      <WeekCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      <WeekCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} planDates={planDates} />
 
       <View style={styles.segmentWrapper}>
         <SegmentedControl
@@ -365,17 +307,8 @@ export default function PlanScreen() {
             )}
 
             {/* 棚セクション */}
-            <CollectionsStrip
-              onPressAll={() => router.push('/collections')}
+            <CollectionsList
               onPressCollection={(id) => router.push(`/collection/${id}`)}
-            />
-
-            {/* 今日の発見セクション */}
-            <DiscoverStrip
-              onSaveItem={(url) =>
-                router.push({ pathname: '/(modal)/extract', params: { url } })
-              }
-              onPressAll={() => router.push('/discover')}
             />
           </>
         ) : (
@@ -404,6 +337,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dateText: { ...textStyle.numSm },
+  mealDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.ochre,
+  },
+  mealDotPlaceholder: {
+    width: 4,
+    height: 4,
+  },
   segmentWrapper: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -450,45 +393,12 @@ const styles = StyleSheet.create({
     ...textStyle.bodySm,
     textAlign: 'center',
   },
-  // CollectionsStrip
-  stripSection: {
-    gap: spacing.sm,
+  collectionsSection: {
+    gap: spacing.md,
     marginTop: spacing.sm,
   },
-  stripHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xs,
-  },
-  stripTitle: {
+  sectionTitle: {
     ...textStyle.titleSm,
-  },
-  stripSeeAll: {
-    ...textStyle.bodySm,
-  },
-  stripScroll: {
-    gap: spacing.sm,
     paddingHorizontal: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  collectionChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 0.5,
-    gap: 2,
-    minWidth: 96,
-    maxWidth: 160,
-  },
-  chipName: {
-    ...textStyle.bodySm,
-    fontWeight: '500',
-  },
-  chipCount: {
-    ...textStyle.micro,
-  },
-  discoverCardWrapper: {
-    width: 240,
   },
 });

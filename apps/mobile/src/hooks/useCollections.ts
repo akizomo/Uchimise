@@ -6,6 +6,8 @@ interface Collection {
   id: string;
   name: string;
   recipe_count: number;
+  preview_thumbnails?: string[];
+  is_auto?: boolean;
   created_at: string;
 }
 

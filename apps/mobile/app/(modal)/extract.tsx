@@ -82,7 +82,6 @@ export default function ExtractScreen() {
                 returnKeyType="go"
                 onSubmitEditing={handleExtract}
                 autoCapitalize="none"
-                autoCorrect={false}
               />
             </View>
             <Button
