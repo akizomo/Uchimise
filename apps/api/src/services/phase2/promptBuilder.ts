@@ -1,7 +1,34 @@
+export interface VideoChapter {
+  title: string;
+  seconds: number;
+}
+
 export interface RecipeContext {
   title: string;
   rawDescription: string;
   phase1Ingredients: Array<{ name: string }>;
+  videoChapters?: VideoChapter[];
+}
+
+/**
+ * YouTube 説明文のチャプターマーカーを解析する。
+ * "0:00 タイトル" や "1:23:45 タイトル" 形式に対応。
+ */
+export function parseVideoChapters(description: string): VideoChapter[] {
+  const chapters: VideoChapter[] = [];
+  for (const line of description.split('\n')) {
+    const trimmed = line.trim();
+    // "0:00", "1:23", "1:23:45" + 半角スペース + タイトル
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(.+)/);
+    if (match) {
+      const mins = parseInt(match[1], 10);
+      const secs = parseInt(match[2], 10);
+      const extraSecs = match[3] ? parseInt(match[3], 10) : 0;
+      const title = match[4].trim();
+      chapters.push({ title, seconds: mins * 60 + secs + extraSecs });
+    }
+  }
+  return chapters;
 }
 
 // Maximum characters of description text sent to the LLM.
@@ -56,6 +83,16 @@ export function buildPhase2Context(ctx: RecipeContext): string {
       lines.push(`  - ${ing.name.replace(/<|>/g, '')}`)
     );
     lines.push('</phase1_ingredients>');
+  }
+
+  if (ctx.videoChapters && ctx.videoChapters.length > 0) {
+    lines.push('<video_chapters>');
+    ctx.videoChapters.forEach(({ title, seconds }) => {
+      const m = Math.floor(seconds / 60);
+      const s = String(seconds % 60).padStart(2, '0');
+      lines.push(`  ${m}:${s} ${title}`);
+    });
+    lines.push('</video_chapters>');
   }
 
   lines.push('<description>');

@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import { createAdminClient } from '../db/supabaseAdmin';
-import { buildPhase2Context } from '../services/phase2/promptBuilder';
+import { buildPhase2Context, parseVideoChapters } from '../services/phase2/promptBuilder';
 import { structureRecipeWithClaude } from '../services/phase2/claudeClient';
 import { normalizeRecipe } from '../services/phase2/normalizer';
 
@@ -54,10 +54,17 @@ async function runPhase2Directly(data: Phase2JobData): Promise<void> {
   const rawDescription = (recipe.raw_description as string | null) ?? '';
   console.log(`[Phase2] raw_description length: ${rawDescription.length} chars`);
 
+  // raw_description は "description\n\n---\n\ntranscript" 形式。
+  // チャプターは description 部分（--- の前）にあるため、そこだけ対象にする。
+  const descriptionPart = rawDescription.split('\n\n---\n\n')[0] ?? rawDescription;
+  const videoChapters = parseVideoChapters(descriptionPart);
+  console.log(`[Phase2] video chapters: ${videoChapters.length} found`);
+
   const context = buildPhase2Context({
     title: recipe.title as string,
     rawDescription: rawDescription || (recipe.title as string),
     phase1Ingredients: (recipe.ingredients as Array<{ name: string }>) ?? [],
+    videoChapters: videoChapters.length > 0 ? videoChapters : undefined,
   });
 
   try {

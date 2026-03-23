@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   Vibration,
   View,
 } from 'react-native';
+import YoutubeIframe, { type YoutubeIframeRef } from 'react-native-youtube-iframe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { RotateCcw, Timer } from 'lucide-react-native';
 
@@ -50,6 +50,13 @@ function detectTimerSeconds(text: string, timerSeconds?: number | null): number 
 
   // 時間情報がなければ null、あれば秒数
   return total > 0 ? total : null;
+}
+
+const PLAYER_HEIGHT = 210; // 16:9 に近い高さ（一般的なスマートフォン幅 ~375px で約 210px）
+
+/** YouTube URL から videoId を抽出する */
+function extractVideoId(url: string): string | null {
+  return url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
 }
 
 function formatTime(seconds: number): string {
@@ -279,6 +286,13 @@ export default function CookingModeScreen() {
   const { data: recipe, isLoading } = useRecipe(id ?? '');
   const createCookingRecord = useCreateCookingRecord();
 
+  // YouTube インライン再生
+  const playerRef = useRef<YoutubeIframeRef>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoId = recipe?.source_type === 'youtube' && recipe.source_url
+    ? extractVideoId(recipe.source_url)
+    : null;
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [exitDialogVisible, setExitDialogVisible] = useState(false);
@@ -295,6 +309,15 @@ export default function CookingModeScreen() {
   const timerSeconds = currentStep
     ? detectTimerSeconds(currentStep.text, currentStep.timer_seconds)
     : null;
+
+  // ステップが変わったとき、タイムスタンプがあれば動画をそこにシーク
+  useEffect(() => {
+    const ts = currentStep?.video_timestamp_seconds;
+    if (ts != null && playerRef.current) {
+      playerRef.current.seekTo(ts, true);
+      setIsPlaying(false); // シーク後は一時停止。ユーザーが手動で再生する
+    }
+  }, [currentStepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleNext() {
     if (isLastStep) {
@@ -394,6 +417,26 @@ export default function CookingModeScreen() {
           </View>
 
           <ScrollView contentContainerStyle={styles.stepContent}>
+            {/* YouTube インライン再生（YouTube レシピは常に表示） */}
+            {videoId && (
+              <View style={styles.playerContainer}>
+                <YoutubeIframe
+                  ref={playerRef}
+                  height={PLAYER_HEIGHT}
+                  videoId={videoId}
+                  play={isPlaying}
+                  initialPlayerParams={{
+                    modestbranding: true,
+                    rel: 0,
+                  }}
+                  onChangeState={(event) => {
+                    if (event === 'playing') setIsPlaying(true);
+                    if (event === 'paused' || event === 'ended') setIsPlaying(false);
+                  }}
+                />
+              </View>
+            )}
+
             {/* ステップテキスト */}
             <Text style={[styles.stepText, { color: theme.label }]}>
               {currentStep?.text}
@@ -492,6 +535,11 @@ const styles = StyleSheet.create({
     fontFamily: 'NotoSansJP-Medium',
     fontSize: 18,
     lineHeight: 30,
+  },
+
+  playerContainer: {
+    borderRadius: radius.md,
+    overflow: 'hidden',
   },
 
   footer: {

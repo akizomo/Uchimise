@@ -28,7 +28,8 @@ const SYSTEM_PROMPT = `あなたは日本語レシピの材料と手順を正規
     {
       "order": 1,
       "text": "手順のテキスト",
-      "timer_seconds": 数値または null
+      "timer_seconds": 数値または null,
+      "video_timestamp_seconds": 数値または null
     }
   ],
   "tags": ["時短"],
@@ -43,11 +44,13 @@ const SYSTEM_PROMPT = `あなたは日本語レシピの材料と手順を正規
   - 例: 鶏もも肉 → ["鶏むね肉", "豚こま切れ肉"]
   - 例: 塩 → [] （代替がない基本調味料は空配列）
   - 例: 生クリーム → ["豆乳", "牛乳"]
-- steps: 手順が明記されている場合のみ。不明な場合は空配列 []
-- timer_seconds: 「○分炒める」「○分煮る」「○時間漬ける」など明確な加熱・待機時間がある手順のみ秒数を返す。それ以外は null
-  - 例: "弱火で10分炒める" → 600
-  - 例: "一晩漬ける" → null （曖昧な時間は null）
-  - 例: "塩を振る" → null
+- steps: <description> に調理の流れが含まれている場合は必ず抽出してください。箇条書き・番号付きリストだけでなく、字幕や話し言葉（「〜していきます」「〜を入れます」など）からも調理工程として読み取れる内容をステップに変換してください。手順が全く読み取れない場合のみ空配列 []
+- timer_seconds: 調理中の加熱・待機時間を「秒数」で返す。単位変換を必ず正確に行うこと。
+  - 1分 = 60秒、10分 = 600秒、30分 = 1800秒
+  - 「40秒炒める」→ 40、「40分煮る」→ 2400（40×60）、「1時間30分」→ 5400
+  - 「少し炒める」「適宜」「一晩」など曖昧な時間 → null
+  - 「塩を振る」など時間の記述がない手順 → null
+- video_timestamp_seconds: <video_chapters> が提供されている場合のみ設定する。各手順に最も関連するチャプターの開始時刻（秒数）を設定する。関連チャプターがない場合・<video_chapters> が存在しない場合は null
 - tags の選定基準:
     "時短"   → 合計調理時間 30分以内
     "作り置き" → 冷蔵保存可能、翌日以降も食べられる
@@ -68,6 +71,7 @@ export interface StructuredRecipe {
     order: number;
     text: string;
     timer_seconds: number | null;
+    video_timestamp_seconds: number | null;
   }>;
   tags: string[];
   cookTimeMinutes: number | null;

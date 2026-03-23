@@ -14,6 +14,7 @@ export interface NormalizedRecipe {
     order: number;
     text: string;
     timer_seconds: number | null;
+    video_timestamp_seconds: number | null;
   }>;
   tags: string[];
   cookTimeMinutes?: number;
@@ -64,6 +65,12 @@ const NormalizedStepSchema = z.object({
     .optional()
     .transform((v) => (typeof v === 'number' && v > 0 ? v : null))
     .default(null),
+  // 動画のチャプタータイムスタンプ（秒）。0秒は有効値（動画冒頭）。
+  video_timestamp_seconds: z
+    .union([z.number(), z.null()])
+    .optional()
+    .transform((v) => (typeof v === 'number' && v >= 0 ? v : null))
+    .default(null),
 });
 
 // Calculate overall confidence as average of individual ingredient confidences
@@ -107,6 +114,7 @@ export function normalizeRecipe(raw: StructuredRecipe): NormalizedRecipe {
       order: step.order,
       text: step.text,
       timer_seconds: step.timer_seconds,
+      video_timestamp_seconds: step.video_timestamp_seconds,
     })),
     tags: raw.tags.filter((t) => typeof t === 'string'),
     cookTimeMinutes: raw.cookTimeMinutes ?? undefined,
