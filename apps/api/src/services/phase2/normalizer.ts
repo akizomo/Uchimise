@@ -23,10 +23,25 @@ export interface NormalizedRecipe {
 
 const NormalizedIngredientSchema = z.object({
   name: z.string().min(1),
-  // OpenAI json_object mode returns null for omitted optional fields,
-  // so we accept null and normalise it to undefined / default value.
-  amount: z.string().nullish().transform((v) => v ?? undefined),
-  unit:   z.string().nullish().transform((v) => v ?? undefined),
+  // OpenAI が amount/unit を number や空文字で返すことがあるため、
+  // string | number | null | undefined を受け入れて string | undefined に正規化する。
+  // amount: 0 は「未指定」として undefined 扱い。
+  amount: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform((v) => {
+      if (v === null || v === undefined) return undefined;
+      if (typeof v === 'number') return v === 0 ? undefined : String(v);
+      return v.trim() || undefined; // 空文字 → undefined
+    }),
+  unit: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform((v) => {
+      if (v === null || v === undefined) return undefined;
+      if (typeof v === 'number') return v === 0 ? undefined : String(v);
+      return v.trim() || undefined; // 空文字 → undefined
+    }),
   // confidence can be null from OpenAI → treat as 1.0
   confidence: z
     .union([z.number(), z.null()])
