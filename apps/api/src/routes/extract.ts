@@ -48,6 +48,7 @@ extractRoute.post('/', zValidator('json', extractSchema), async (c) => {
     let creatorName = '';
     let thumbnailUrl = '';
     let descriptionText = '';
+    let roughInput = '';      // roughExtract 用（説明文のみ）
     let cookTimeMinutes: number | undefined;
 
     if (sourceType === 'youtube') {
@@ -55,9 +56,20 @@ extractRoute.post('/', zValidator('json', extractSchema), async (c) => {
       title = videoData.title;
       creatorName = videoData.channelTitle;
       thumbnailUrl = videoData.thumbnailUrl;
-      // 字幕があれば優先、なければ説明文にフォールバック
-      descriptionText = videoData.transcript || videoData.description;
-      console.log(`[Extract] transcript: ${videoData.transcript.length}文字, description: ${videoData.description.length}文字`);
+      const transcript  = videoData.transcript.trim();
+      const description = videoData.description.trim();
+      console.log(`[Extract] transcript: ${transcript.length}文字, description: ${description.length}文字`);
+
+      // roughExtract は【材料】セクションのパターンマッチなので説明文のみを対象にする
+      roughInput = description;
+
+      // Phase 2 へは説明文＋字幕を両方渡す。
+      // 説明文に材料リスト、字幕に調理手順が含まれることが多いため両方が必要。
+      if (transcript && description) {
+        descriptionText = `${description}\n\n---\n\n${transcript}`;
+      } else {
+        descriptionText = transcript || description;
+      }
       cookTimeMinutes = Math.round(videoData.durationSeconds / 60);
     } else {
       const mediaData = await fetchInstagramMedia(url);
@@ -65,9 +77,10 @@ extractRoute.post('/', zValidator('json', extractSchema), async (c) => {
       creatorName = '';
       thumbnailUrl = mediaData.thumbnailUrl;
       descriptionText = mediaData.caption;
+      roughInput = mediaData.caption;
     }
 
-    const extraction = roughExtract(descriptionText);
+    const extraction = roughExtract(roughInput);
 
     const isManualRequired = !extraction.hasIngredientSection && sourceType === 'instagram';
     const ingredients = isManualRequired ? [] : extraction.ingredientNames.map((name) => ({ name }));

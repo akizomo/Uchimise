@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
 import { createAdminClient } from '../db/supabaseAdmin';
+import { enqueuePhase2 } from '../jobs/queue';
 import type { AppEnv } from '../types/hono';
 
 const recipesRoute = new Hono<AppEnv>();
@@ -93,6 +94,38 @@ recipesRoute.patch('/:id', zValidator('json', updateRecipeSchema), async (c) => 
   }
 
   return c.json({ success: true, data });
+});
+
+// POST /api/recipes/:id/retry-phase2
+recipesRoute.post('/:id/retry-phase2', async (c) => {
+  const userId = c.get('userId') as string;
+  const { id } = c.req.param();
+  const supabase = createAdminClient();
+
+  const { data: recipe, error } = await supabase
+    .from('recipes')
+    .select('id, extraction_status')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !recipe) {
+    return c.json({ success: false, error: 'Recipe not found' }, 404);
+  }
+
+  if (recipe.extraction_status === 'done') {
+    return c.json({ success: true }, 200);
+  }
+
+  // Reset to pending before re-enqueueing
+  await supabase
+    .from('recipes')
+    .update({ extraction_status: 'pending' })
+    .eq('id', id);
+
+  await enqueuePhase2({ recipeId: id, userId });
+
+  return c.json({ success: true }, 200);
 });
 
 // DELETE /api/recipes/:id

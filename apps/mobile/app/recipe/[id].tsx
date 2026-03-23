@@ -1,35 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   Linking,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, ExternalLink } from 'lucide-react-native';
+import { ArrowLeft, Bookmark, BookmarkCheck, Calendar, Share2 } from 'lucide-react-native';
 
 import { colors, radius, spacing, textStyle } from '@uchimise/tokens';
 import {
+  ActivityIndicator,
   BottomSheet,
   Button,
   Chip,
   Divider,
   Icon,
-  IconButton,
   ListRow,
-  PhaseBanner,
-  SkeletonLoader,
   Tag,
   Toast,
   useTheme,
 } from '@uchimise/ui';
 
-import { useRecipe } from '../../src/hooks/useRecipe';
+import { useDeleteRecipe, useRecipe, useRetryPhase2 } from '../../src/hooks/useRecipe';
 import { useAddToMeal } from '../../src/hooks/useAddToMeal';
 import {
   getCurrentMealSlot,
@@ -46,6 +46,21 @@ type Substitutions = Record<string, string | null>;
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
+const WEEK_DAYS_SHORT = ['日', '月', '火', '水', '木', '金', '土'];
+
+function getUpcomingDates(count = 7) {
+  const today = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {
+      dateStr: toDateString(d),
+      shortLabel: i === 0 ? '今日' : i === 1 ? '明日' : WEEK_DAYS_SHORT[d.getDay()],
+      dayNum: d.getDate(),
+    };
+  });
+}
+
 /** 正規表現の特殊文字をエスケープ */
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -53,7 +68,6 @@ function escapeRegex(s: string): string {
 
 /**
  * 手順テキスト内の代替済み食材名を Ochre でハイライトする。
- * 元の食材名にマッチした箇所を着色 Text に置換して返す。
  */
 function renderStepText(
   text: string,
@@ -85,39 +99,22 @@ function renderStepText(
 
 interface HeroImageProps {
   thumbnailUrl: string | null;
-  title: string;
-  cookTimeMinutes: number | null;
-  creatorName: string | null;
-  isSaved: boolean;
   onBack: () => void;
-  onBookmark: () => void;
 }
 
-function HeroImage({
-  thumbnailUrl,
-  title,
-  cookTimeMinutes,
-  creatorName,
-  isSaved,
-  onBack,
-  onBookmark,
-}: HeroImageProps) {
+function HeroImage({ thumbnailUrl, onBack }: HeroImageProps) {
   return (
     <View style={heroStyles.container}>
       {thumbnailUrl ? (
         <Image source={{ uri: thumbnailUrl }} style={heroStyles.image} resizeMode="cover" />
       ) : (
-        <View style={[heroStyles.image, { backgroundColor: colors.ivory }]}>
+        <View style={[heroStyles.image, { backgroundColor: colors.ivory, alignItems: 'center', justifyContent: 'center' }]}>
           <Text style={{ fontSize: 48 }}>🍳</Text>
         </View>
       )}
 
-      {/* 下部スクリム（グラデーション代わり） */}
-      <View style={heroStyles.scrim} />
-
-      {/* 上部ボタン行 */}
+      {/* 戻るボタンのみ — ブックマークはタイトル下のアクション行へ */}
       <View style={heroStyles.topRow}>
-        {/* 左上: 戻るボタン（26×26px・rgba(42,22,0,0.65)） */}
         <Pressable
           style={heroStyles.overlayButton}
           onPress={onBack}
@@ -126,65 +123,29 @@ function HeroImage({
         >
           <Icon as={ArrowLeft} size={16} color={colors.cream} strokeWidth={2} />
         </Pressable>
-
-        {/* 右上: ブックマークボタン（26×26px・アイコンのみ・テキストなし） */}
-        <Pressable
-          style={heroStyles.overlayButton}
-          onPress={onBookmark}
-          accessibilityLabel={isSaved ? '棚から取り出す' : '棚に保存する'}
-          accessibilityRole="button"
-        >
-          <Icon
-            as={Bookmark}
-            size={16}
-            color={colors.cream}
-            strokeWidth={isSaved ? 2.5 : 1.5}
-          />
-        </Pressable>
-      </View>
-
-      {/* 下部メタ情報（スクリム上） */}
-      <View style={heroStyles.meta}>
-        <Text style={heroStyles.title} numberOfLines={2}>
-          {title}
-        </Text>
-        {(cookTimeMinutes != null || creatorName) && (
-          <Text style={heroStyles.sub}>
-            {[cookTimeMinutes ? `${cookTimeMinutes}分` : null, creatorName]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-        )}
       </View>
     </View>
   );
 }
 
-const HERO_HEIGHT = 160;
-const OVERLAY_BUTTON_SIZE = 26;
+const HERO_HEIGHT = 200;
+const OVERLAY_BUTTON_SIZE = 32;
+const STATUS_BAR_HEIGHT =
+  Platform.OS === 'ios' ? (StatusBar.currentHeight ?? 44) : (StatusBar.currentHeight ?? 0);
 
 const heroStyles = StyleSheet.create({
   container: {
-    height: HERO_HEIGHT,
+    height: HERO_HEIGHT + STATUS_BAR_HEIGHT,
     width: '100%',
     overflow: 'hidden',
   },
   image: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(42,22,0,0.45)',
   },
   topRow: {
     position: 'absolute',
-    top: spacing.sm,
+    top: STATUS_BAR_HEIGHT + spacing.sm,
     left: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   overlayButton: {
     width: OVERLAY_BUTTON_SIZE,
@@ -194,23 +155,45 @@ const heroStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  meta: {
-    position: 'absolute',
-    bottom: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
+});
+
+// ─── ActionItem ───────────────────────────────────────────────────────────────
+
+interface ActionItemProps {
+  iconNode: React.ReactNode;
+  label: string;
+  onPress: () => void;
+}
+
+function ActionItem({ iconNode, label, onPress }: ActionItemProps) {
+  const theme = useTheme();
+  return (
+    <Pressable style={actionStyles.item} onPress={onPress} accessibilityRole="button">
+      <View style={[actionStyles.iconWrap, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
+        {iconNode}
+      </View>
+      <Text style={[actionStyles.label, { color: theme.labelSecondary }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const actionStyles = StyleSheet.create({
+  item: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
   },
-  title: {
-    ...textStyle.label,
-    fontWeight: '500',
-    fontSize: 13,
-    color: colors.cream,
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 0.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  sub: {
+  label: {
     ...textStyle.micro,
-    fontSize: 9,
-    color: colors.honey,
-    marginTop: 2,
+    textAlign: 'center',
   },
 });
 
@@ -246,14 +229,10 @@ function IngredientRow({
   const theme = useTheme();
   const hasAlternatives = alternatives && alternatives.length > 0;
 
-  const displayName =
-    isActive && selectedAlt != null
-      ? selectedAlt
-      : name;
+  const displayName = isActive && selectedAlt != null ? selectedAlt : name;
 
   return (
     <View>
-      {/* メイン行: 食材名（左）/ 分量（右）/ 「ない」ボタン（右端） */}
       <View style={ingStyles.row}>
         <Text
           style={[
@@ -270,49 +249,45 @@ function IngredientRow({
           {amount ?? ''}{unit ?? ''}
         </Text>
 
-        {/* 「ない」ボタン */}
-        {/* 通常: #888780文字・D3D1C7枠線・白背景 */}
-        {/* アクティブ: Ochre文字・Ochre枠線・Cream背景 */}
         <Pressable
           onPress={onToggleExpand}
           style={[
             ingStyles.naiButton,
             isActive
               ? { borderColor: colors.ochre, backgroundColor: colors.cream }
-              : { borderColor: '#D3D1C7', backgroundColor: '#FFFFFF' },
+              : { borderColor: colors.linen, backgroundColor: colors.ivory },
           ]}
           accessibilityLabel={`${name}がない場合の代替を見る`}
           accessibilityRole="button"
         >
-          <Text
-            style={[
-              ingStyles.naiLabel,
-              { color: isActive ? colors.ochre : '#888780' },
-            ]}
-          >
+          <Text style={[ingStyles.naiLabel, { color: isActive ? colors.ochre : colors.mist }]}>
             ない
           </Text>
         </Pressable>
       </View>
 
-      {/* 代替案ブロック: Cream背景・Honey枠線・border-radius 7px */}
       {isExpanded && (
         <View style={ingStyles.altBlock}>
-          {hasAlternatives ? (
+          {/* alternatives === undefined: Phase 2 未取得（旧データ or pending） */}
+          {alternatives === undefined ? (
+            <Text style={[textStyle.bodySm, { color: colors.mist }]}>
+              代替案を確認しています…
+            </Text>
+          ) : (
             <>
-              <Text style={[textStyle.bodySm, { color: colors.walnut, marginBottom: spacing.xs }]}>
-                代わりに使えるもの
-              </Text>
+              {hasAlternatives && (
+                <Text style={[textStyle.bodySm, { color: colors.walnut, marginBottom: spacing.xs }]}>
+                  代わりに使えるもの
+                </Text>
+              )}
               <View style={ingStyles.chipRow}>
+                {/* 省く（代替なしでも常に表示） */}
                 <Chip
                   label="省く"
                   selected={isActive && selectedAlt === null}
                   onPress={() => {
-                    if (isActive && selectedAlt === null) {
-                      onDeselectAlt();
-                    } else {
-                      onSelectAlt(null);
-                    }
+                    if (isActive && selectedAlt === null) onDeselectAlt();
+                    else onSelectAlt(null);
                   }}
                 />
                 {alternatives.map((alt) => (
@@ -321,20 +296,13 @@ function IngredientRow({
                     label={alt}
                     selected={selectedAlt === alt}
                     onPress={() => {
-                      if (selectedAlt === alt) {
-                        onDeselectAlt();
-                      } else {
-                        onSelectAlt(alt);
-                      }
+                      if (selectedAlt === alt) onDeselectAlt();
+                      else onSelectAlt(alt);
                     }}
                   />
                 ))}
               </View>
             </>
-          ) : (
-            <Text style={[textStyle.bodySm, { color: colors.mist }]}>
-              代替案を確認しています…
-            </Text>
           )}
         </View>
       )}
@@ -352,9 +320,7 @@ const ingStyles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 44,
   },
-  name: {
-    flex: 1,
-  },
+  name: { flex: 1 },
   amount: {
     marginLeft: spacing.sm,
     marginRight: spacing.md,
@@ -378,7 +344,7 @@ const ingStyles = StyleSheet.create({
     backgroundColor: colors.cream,
     borderWidth: 0.5,
     borderColor: colors.honey,
-    borderRadius: 7,
+    borderRadius: radius.sm,
   },
   chipRow: {
     flexDirection: 'row',
@@ -387,83 +353,241 @@ const ingStyles = StyleSheet.create({
   },
 });
 
-// ─── MealSlotSheet ───────────────────────────────────────────────────────────
+// ─── DateSlotSheet ───────────────────────────────────────────────────────────
 
-interface MealSlotSheetProps {
+interface DateSlotSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSelectSlot: (slot: MealSlot) => void;
+  onConfirm: (date: string, slot: MealSlot) => void;
   isPending: boolean;
 }
 
-function MealSlotSheet({ visible, onClose, onSelectSlot, isPending }: MealSlotSheetProps) {
+function DateSlotSheet({ visible, onClose, onConfirm, isPending }: DateSlotSheetProps) {
+  const theme = useTheme();
+  const today = toDateString();
   const currentSlot = getCurrentMealSlot();
-  const orderedSlots: MealSlot[] = [
-    currentSlot,
-    ...MEAL_SLOTS.filter((s) => s !== currentSlot),
-  ];
+
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedSlot, setSelectedSlot] = useState<MealSlot>(currentSlot);
+
+  // シートが開くたびに今日・現在の食事スロットにリセット
+  useEffect(() => {
+    if (visible) {
+      setSelectedDate(today);
+      setSelectedSlot(currentSlot);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const dates = getUpcomingDates(7);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="今日のどの食事に入れますか。">
-      <View style={slotSheetStyles.content}>
-        {orderedSlots.map((slot, idx) => (
-          <ListRow
-            key={slot}
-            title={getMealSlotLabel(slot)}
-            trailing="chevron"
-            onPress={() => onSelectSlot(slot)}
-            showDivider={idx < orderedSlots.length - 1}
-          />
-        ))}
-        <View style={slotSheetStyles.cancelRow}>
-          <Button label="やめておく" variant="secondary" onPress={onClose} disabled={isPending} />
+    <BottomSheet visible={visible} onClose={onClose} title="献立に入れる">
+      <View style={dsStyles.content}>
+        {/* 日付横スクロール */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={dsStyles.dateRow}
+        >
+          {dates.map(({ dateStr, shortLabel, dayNum }) => {
+            const isSelected = selectedDate === dateStr;
+            return (
+              <Pressable
+                key={dateStr}
+                style={[
+                  dsStyles.dateChip,
+                  {
+                    borderColor: isSelected ? colors.ochre : theme.border,
+                    backgroundColor: isSelected ? colors.ochre : theme.bgSecondary,
+                  },
+                ]}
+                onPress={() => setSelectedDate(dateStr)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Text style={[dsStyles.dateChipLabel, { color: isSelected ? colors.cream : theme.labelSecondary }]}>
+                  {shortLabel}
+                </Text>
+                <Text style={[dsStyles.dateChipNum, { color: isSelected ? colors.cream : theme.label }]}>
+                  {dayNum}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* 食事スロット */}
+        <View style={dsStyles.slotRow}>
+          {MEAL_SLOTS.map((slot) => {
+            const isSelected = selectedSlot === slot;
+            return (
+              <Pressable
+                key={slot}
+                style={[
+                  dsStyles.slotChip,
+                  {
+                    borderColor: isSelected ? colors.ochre : theme.border,
+                    backgroundColor: isSelected ? colors.espresso : theme.bgSecondary,
+                  },
+                ]}
+                onPress={() => setSelectedSlot(slot)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Text style={[dsStyles.slotLabel, { color: isSelected ? colors.cream : theme.label }]}>
+                  {getMealSlotLabel(slot)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* アクション */}
+        <View style={dsStyles.actions}>
+          <View style={dsStyles.actionsSecondary}>
+            <Button label="そのままにする" variant="secondary" onPress={onClose} disabled={isPending} />
+          </View>
+          <View style={dsStyles.actionsPrimary}>
+            <Button
+              label="献立に入れる"
+              onPress={() => onConfirm(selectedDate, selectedSlot)}
+              isLoading={isPending}
+              disabled={isPending}
+            />
+          </View>
         </View>
       </View>
     </BottomSheet>
   );
 }
 
-const slotSheetStyles = StyleSheet.create({
+const dsStyles = StyleSheet.create({
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
+  dateRow: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  dateChip: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 0.5,
+    minWidth: 52,
+    gap: 2,
+  },
+  dateChipLabel: {
+    ...textStyle.micro,
+  },
+  dateChipNum: {
+    ...textStyle.numSm,
+    fontWeight: '600',
+  },
+  slotRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  slotChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 0.5,
+  },
+  slotLabel: {
+    ...textStyle.label,
+    fontWeight: '500',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionsSecondary: { flex: 1 },
+  actionsPrimary: { flex: 2 },
+});
+
+// ─── UnsaveSheet ─────────────────────────────────────────────────────────────
+
+interface UnsaveSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}
+
+function UnsaveSheet({ visible, onClose, onConfirm, isPending }: UnsaveSheetProps) {
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="棚から取り出しますか？">
+      <View style={unsaveStyles.content}>
+        <ListRow
+          title="取り出す"
+          trailing="none"
+          onPress={onConfirm}
+          destructive
+          showDivider
+        />
+        <ListRow
+          title="そのままにする"
+          trailing="none"
+          onPress={onClose}
+        />
+      </View>
+    </BottomSheet>
+  );
+}
+
+const unsaveStyles = StyleSheet.create({
   content: {
     paddingBottom: spacing.md,
-  },
-  cancelRow: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
   },
 });
 
 // ─── RecipeDetailScreen ──────────────────────────────────────────────────────
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, toast: toastParam } = useLocalSearchParams<{ id: string; toast?: string }>();
   const router = useRouter();
   const theme = useTheme();
 
   // Data
   const { data: recipe, isLoading, isError } = useRecipe(id ?? '');
   const addToMeal = useAddToMeal();
+  const deleteRecipe = useDeleteRecipe();
+  const retryPhase2 = useRetryPhase2();
 
   // State: 代替食材
   const [expandedIngredients, setExpandedIngredients] = useState<Set<string>>(new Set());
   const [substitutions, setSubstitutions] = useState<Substitutions>({});
 
-  // State: BottomSheet / Toast
+  // State: Sheets / Toast
   const [mealSheetVisible, setMealSheetVisible] = useState(false);
+  const [unsaveSheetVisible, setUnsaveSheetVisible] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState<'positive' | 'negative'>('positive');
+
+  // already_saved パラメータ付きで遷移してきたとき、マウント後にトーストを表示
+  useEffect(() => {
+    if (toastParam === 'already_saved') {
+      setToastMessage('このレシピはすでに棚に保存されています。');
+      setToastVariant('positive');
+      setToastVisible(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   function handleToggleExpand(name: string) {
     setExpandedIngredients((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   }
@@ -485,18 +609,23 @@ export default function RecipeDetailScreen() {
     router.push(`/cooking/${recipe.id}`);
   }
 
-  function handleBookmark() {
-    // TODO: 棚に保存 / 取り出し のトグル実装（useToggleSave hook）
-    // 暫定: 献立シートを開く
-    setMealSheetVisible(true);
+  function handleConfirmUnsave() {
+    if (!recipe) return;
+    deleteRecipe.mutate(recipe.id, {
+      onSuccess: () => router.back(),
+      onError: () => {
+        setUnsaveSheetVisible(false);
+        setToastMessage('うまく取り出せませんでした。もう一度試してみてください。');
+        setToastVariant('negative');
+        setToastVisible(true);
+      },
+    });
   }
 
-  function handleAddToSlot(slot: MealSlot) {
+  function handleAddToMeal(date: string, slot: MealSlot) {
     if (!recipe) return;
-    const today = toDateString();
-
     addToMeal.mutate(
-      { recipeId: recipe.id, plannedDate: today, mealSlot: slot },
+      { recipeId: recipe.id, plannedDate: date, mealSlot: slot },
       {
         onSuccess: () => {
           setMealSheetVisible(false);
@@ -537,14 +666,8 @@ export default function RecipeDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bgPage }]}>
-        <SkeletonLoader height={HERO_HEIGHT} width="100%" />
-        <View style={styles.loadingBody}>
-          <SkeletonLoader height={16} width="60%" />
-          <SkeletonLoader height={14} width="40%" style={{ marginTop: spacing.sm }} />
-          <SkeletonLoader height={120} width="100%" style={{ marginTop: spacing.lg }} />
-          <SkeletonLoader height={14} width="50%" style={{ marginTop: spacing.lg }} />
-          <SkeletonLoader height={60} width="100%" style={{ marginTop: spacing.sm }} />
-          <SkeletonLoader height={60} width="100%" style={{ marginTop: spacing.sm }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" />
         </View>
       </SafeAreaView>
     );
@@ -569,97 +692,183 @@ export default function RecipeDetailScreen() {
 
   const ingredients = recipe.ingredients;
   const steps = recipe.steps;
+  const isPending = recipe.extraction_status === 'pending';
+  const isFailed = recipe.extraction_status === 'failed';
+  const isDone = recipe.extraction_status === 'done';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bgPage }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ヒーロー写真（160px・フルブリード） */}
-        <HeroImage
-          thumbnailUrl={recipe.thumbnail_url}
-          title={recipe.title}
-          cookTimeMinutes={recipe.cook_time_minutes}
-          creatorName={recipe.creator_name}
-          isSaved
-          onBack={() => router.back()}
-          onBookmark={handleBookmark}
-        />
 
-        {/* Phase 2 処理中バナー */}
-        <PhaseBanner visible={recipe.extraction_status === 'pending'} />
+        {/* ヒーロー写真（戻るボタンのみ） */}
+        <HeroImage thumbnailUrl={recipe.thumbnail_url} onBack={() => router.back()} />
+
+        {/* タイトルエリア */}
+        <View style={[styles.titleArea, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.recipeTitle, { color: theme.label }]}>{recipe.title}</Text>
+          {(recipe.cook_time_minutes != null || recipe.creator_name) && (
+            <Text style={[textStyle.bodySm, { color: theme.labelSecondary }]}>
+              {[
+                recipe.cook_time_minutes ? `${recipe.cook_time_minutes}分` : null,
+                recipe.creator_name,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          )}
+
+          {/* アクション行: 取り出す / 献立に追加 / シェア */}
+          <View style={styles.actionRow}>
+            <ActionItem
+              iconNode={
+                <Icon as={BookmarkCheck} size={20} color={colors.espresso} strokeWidth={1.5} />
+              }
+              label="取り出す"
+              onPress={() => setUnsaveSheetVisible(true)}
+            />
+            <ActionItem
+              iconNode={
+                <Icon as={Calendar} size={20} color={colors.espresso} strokeWidth={1.5} />
+              }
+              label="献立に追加"
+              onPress={() => setMealSheetVisible(true)}
+            />
+            <ActionItem
+              iconNode={
+                <Icon as={Share2} size={20} color={colors.espresso} strokeWidth={1.5} />
+              }
+              label="シェア"
+              onPress={handleShare}
+            />
+          </View>
+        </View>
 
         <View style={styles.body}>
           {/* タグ行 */}
-          {(recipe.tags.length > 0 || recipe.extraction_status === 'pending') && (
-            <View style={styles.tagsRow}>
-              <Tag label={recipe.source_type === 'youtube' ? 'YouTube' : 'Instagram'} variant="source" />
-              {recipe.extraction_status === 'pending' && (
-                <Tag label="未確認" variant="unconfirmed" />
-              )}
-              {recipe.tags.map((tag) => (
-                <Tag key={tag} label={tag} variant="time" />
-              ))}
-            </View>
-          )}
-
-          {/* 材料リスト */}
-          <Text style={[textStyle.titleSm, { color: theme.label }]}>材料</Text>
-          <View style={[styles.ingredientsCard, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
-            {ingredients.map((ing, idx) => (
-              <IngredientRow
-                key={`${ing.name}-${idx}`}
-                name={ing.name}
-                amount={ing.amount}
-                unit={ing.unit}
-                alternatives={ing.alternatives}
-                isActive={ing.name in substitutions}
-                selectedAlt={substitutions[ing.name]}
-                isExpanded={expandedIngredients.has(ing.name)}
-                onToggleExpand={() => handleToggleExpand(ing.name)}
-                onSelectAlt={(alt) => handleSelectAlt(ing.name, alt)}
-                onDeselectAlt={() => handleDeselectAlt(ing.name)}
-                showDivider={idx < ingredients.length - 1}
-              />
+          <View style={styles.tagsRow}>
+            <Tag label={recipe.source_type === 'youtube' ? 'YouTube' : 'Instagram'} variant="source" />
+            {isPending && <Tag label="未確認" variant="unconfirmed" />}
+            {recipe.tags.map((tag) => (
+              <Tag key={tag} label={tag} variant="time" />
             ))}
           </View>
 
-          {/* 手順リスト: 番号バッジ（Espresso丸・Cream数字）+ テキスト */}
-          <Text style={[textStyle.titleSm, { color: theme.label }]}>手順</Text>
-          {steps.map((step) => (
-            <View key={step.order} style={styles.stepRow}>
-              <View style={styles.stepBadge}>
-                <Text style={styles.stepBadgeText}>{step.order}</Text>
-              </View>
-              {renderStepText(step.text, substitutions, theme.label)}
+          {/* Phase 2 処理中 → ローディング */}
+          {isPending && (
+            <View style={styles.phase2Loading}>
+              <ActivityIndicator size="large" />
+              <Text style={[textStyle.body, { color: theme.labelSecondary, textAlign: 'center' }]}>
+                材料と手順を整理しています…
+              </Text>
             </View>
-          ))}
+          )}
+
+          {/* Phase 2 失敗 → エラー + 再試行 + Phase 1 材料（あれば表示） */}
+          {isFailed && (
+            <>
+              <View style={styles.phase2Error}>
+                <Text style={[textStyle.bodySm, { color: theme.labelTertiary, textAlign: 'center' }]}>
+                  材料と手順の整理に失敗しました。
+                </Text>
+                <Button
+                  label="もう一度試す"
+                  variant="secondary"
+                  onPress={() => retryPhase2.mutate(recipe.id)}
+                  isLoading={retryPhase2.isPending}
+                  disabled={retryPhase2.isPending}
+                />
+              </View>
+              {ingredients.length > 0 && (
+                <>
+                  <Text style={[textStyle.titleSm, { color: theme.label }]}>材料（確認中）</Text>
+                  <View style={[styles.ingredientsCard, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
+                    {ingredients.map((ing, idx) => (
+                      <IngredientRow
+                        key={`${ing.name}-${idx}`}
+                        name={ing.name}
+                        amount={ing.amount}
+                        unit={ing.unit}
+                        alternatives={ing.alternatives}
+                        isActive={ing.name in substitutions}
+                        selectedAlt={substitutions[ing.name]}
+                        isExpanded={expandedIngredients.has(ing.name)}
+                        onToggleExpand={() => handleToggleExpand(ing.name)}
+                        onSelectAlt={(alt) => handleSelectAlt(ing.name, alt)}
+                        onDeselectAlt={() => handleDeselectAlt(ing.name)}
+                        showDivider={idx < ingredients.length - 1}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Phase 2 完了 → 材料・手順 */}
+          {isDone && (
+            <>
+              <Text style={[textStyle.titleSm, { color: theme.label }]}>材料</Text>
+              <View style={[styles.ingredientsCard, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
+                {ingredients.map((ing, idx) => (
+                  <IngredientRow
+                    key={`${ing.name}-${idx}`}
+                    name={ing.name}
+                    amount={ing.amount}
+                    unit={ing.unit}
+                    alternatives={ing.alternatives}
+                    isActive={ing.name in substitutions}
+                    selectedAlt={substitutions[ing.name]}
+                    isExpanded={expandedIngredients.has(ing.name)}
+                    onToggleExpand={() => handleToggleExpand(ing.name)}
+                    onSelectAlt={(alt) => handleSelectAlt(ing.name, alt)}
+                    onDeselectAlt={() => handleDeselectAlt(ing.name)}
+                    showDivider={idx < ingredients.length - 1}
+                  />
+                ))}
+              </View>
+
+              <Text style={[textStyle.titleSm, { color: theme.label }]}>手順</Text>
+              {steps.map((step) => (
+                <View key={step.order} style={styles.stepRow}>
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{step.order}</Text>
+                  </View>
+                  {renderStepText(step.text, substitutions, theme.label)}
+                </View>
+              ))}
+            </>
+          )}
         </View>
       </ScrollView>
 
-      {/* 下部固定エリア: [🔗アイコン] [動画で見る] [調理する] */}
+      {/* 下部固定エリア: [動画を見る] [調理する（done のみ）] */}
       <SafeAreaView style={[styles.footer, { backgroundColor: theme.bgNav, borderTopColor: theme.border }]}>
         <View style={styles.footerRow}>
-          <IconButton
-            icon={<Icon as={ExternalLink} size="sm" color="tint" />}
-            onPress={handleShare}
-            size="lg"
-            variant="tinted"
-            accessibilityLabel="レシピを共有する"
-          />
-          <View style={styles.footerBtnFlex1}>
-            <Button label="動画で見る" variant="secondary" onPress={handleOpenVideo} />
+          <View style={isDone ? styles.footerVideo : styles.footerVideoOnly}>
+            <Button label="動画を見る" variant="secondary" onPress={handleOpenVideo} />
           </View>
-          <View style={styles.footerBtnFlex2}>
-            <Button label="調理する" onPress={handleCook} />
-          </View>
+          {isDone && (
+            <View style={styles.footerCook}>
+              <Button label="調理する" onPress={handleCook} />
+            </View>
+          )}
         </View>
       </SafeAreaView>
 
-      {/* 献立スロット選択シート */}
-      <MealSlotSheet
+      {/* 献立追加シート（日付＋食事スロット） */}
+      <DateSlotSheet
         visible={mealSheetVisible}
         onClose={() => setMealSheetVisible(false)}
-        onSelectSlot={handleAddToSlot}
+        onConfirm={handleAddToMeal}
         isPending={addToMeal.isPending}
+      />
+
+      {/* 棚から取り出す確認シート */}
+      <UnsaveSheet
+        visible={unsaveSheetVisible}
+        onClose={() => setUnsaveSheetVisible(false)}
+        onConfirm={handleConfirmUnsave}
+        isPending={deleteRecipe.isPending}
       />
 
       {/* フィードバック Toast */}
@@ -682,6 +891,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+
+  // タイトルエリア
+  titleArea: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 0.5,
+    gap: spacing.xs,
+  },
+  recipeTitle: {
+    ...textStyle.title,
+    fontWeight: '600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+  },
+
+  // 本文
   body: {
     padding: spacing.xl,
     gap: spacing.lg,
@@ -716,6 +944,21 @@ const styles = StyleSheet.create({
     color: colors.cream,
     fontWeight: '600',
   },
+
+  // Phase 2 状態
+  phase2Loading: {
+    paddingVertical: spacing.xxl,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  phase2Error: {
+    paddingVertical: spacing.xxl,
+    alignItems: 'center',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+  },
+
+  // フッター
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -728,13 +971,17 @@ const styles = StyleSheet.create({
   },
   footerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.sm,
   },
-  footerBtnFlex1: { flex: 1 },
-  footerBtnFlex2: { flex: 2 },
-  loadingBody: {
-    padding: spacing.xl,
+  footerVideo: { flex: 1 },
+  footerVideoOnly: { flex: 1 },
+  footerCook: { flex: 2 },
+
+  // ローディング・エラー全画面
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorContainer: {
     flex: 1,

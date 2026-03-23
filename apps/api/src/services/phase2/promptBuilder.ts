@@ -4,9 +4,10 @@ export interface RecipeContext {
   phase1Ingredients: Array<{ name: string }>;
 }
 
-// Maximum characters of description text sent to Claude
-// ~4000 chars ≈ ~1000 tokens — well within the 200k context window
-const MAX_DESCRIPTION_CHARS = 4000;
+// Maximum characters of description text sent to the LLM.
+// YouTube では説明文＋字幕の両方を渡すため 10000 文字に拡張。
+// gpt-4o-mini の 128k context window に対して十分余裕がある。
+const MAX_DESCRIPTION_CHARS = 10000;
 
 /**
  * Strip noise common in YouTube / Instagram descriptions before sending to Claude.

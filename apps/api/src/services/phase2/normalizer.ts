@@ -7,11 +7,13 @@ export interface NormalizedRecipe {
     name: string;
     amount?: string;
     unit?: string;
+    alternatives: string[];
     isSubstituted: boolean;
   }>;
   steps: Array<{
     order: number;
     text: string;
+    timer_seconds: number | null;
   }>;
   tags: string[];
   cookTimeMinutes?: number;
@@ -21,14 +23,32 @@ export interface NormalizedRecipe {
 
 const NormalizedIngredientSchema = z.object({
   name: z.string().min(1),
-  amount: z.string().optional(),
-  unit: z.string().optional(),
-  confidence: z.number().min(0).max(1).default(1),
+  // OpenAI json_object mode returns null for omitted optional fields,
+  // so we accept null and normalise it to undefined / default value.
+  amount: z.string().nullish().transform((v) => v ?? undefined),
+  unit:   z.string().nullish().transform((v) => v ?? undefined),
+  // confidence can be null from OpenAI → treat as 1.0
+  confidence: z
+    .union([z.number(), z.null()])
+    .optional()
+    .transform((v) => (typeof v === 'number' ? v : 1))
+    .pipe(z.number().min(0).max(1)),
+  // alternatives can be null from OpenAI → treat as []
+  alternatives: z
+    .array(z.string())
+    .nullish()
+    .transform((v) => v ?? []),
 });
 
 const NormalizedStepSchema = z.object({
   order: z.number().int().positive(),
-  text: z.string().min(1),
+  text:  z.string().min(1),
+  // Accept null, undefined, or non-positive values and coerce all to null.
+  timer_seconds: z
+    .union([z.number(), z.null()])
+    .optional()
+    .transform((v) => (typeof v === 'number' && v > 0 ? v : null))
+    .default(null),
 });
 
 // Calculate overall confidence as average of individual ingredient confidences
@@ -41,12 +61,16 @@ function calculateOverallConfidence(
 }
 
 export function normalizeRecipe(raw: StructuredRecipe): NormalizedRecipe {
-  const validatedIngredients = raw.ingredients
+  // OpenAI occasionally returns null instead of [] for empty arrays
+  const rawIngredients = Array.isArray(raw.ingredients) ? raw.ingredients : [];
+  const rawSteps      = Array.isArray(raw.steps)       ? raw.steps       : [];
+
+  const validatedIngredients = rawIngredients
     .map((ing) => NormalizedIngredientSchema.safeParse(ing))
     .filter((r) => r.success)
     .map((r) => r.data!);
 
-  const validatedSteps = raw.steps
+  const validatedSteps = rawSteps
     .map((step) => NormalizedStepSchema.safeParse(step))
     .filter((r) => r.success)
     .map((r) => r.data!)
@@ -61,9 +85,14 @@ export function normalizeRecipe(raw: StructuredRecipe): NormalizedRecipe {
       name: ing.name,
       amount: ing.amount,
       unit: ing.unit,
+      alternatives: ing.alternatives,
       isSubstituted: false,
     })),
-    steps: validatedSteps,
+    steps: validatedSteps.map((step) => ({
+      order: step.order,
+      text: step.text,
+      timer_seconds: step.timer_seconds,
+    })),
     tags: raw.tags.filter((t) => typeof t === 'string'),
     cookTimeMinutes: raw.cookTimeMinutes ?? undefined,
     confidenceScore,

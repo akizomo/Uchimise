@@ -128,6 +128,7 @@ export default function RootLayout() {
           <Stack.Screen name="(modal)" options={{ presentation: 'modal' }} />
           <Stack.Screen name="recipe/[id]" options={{ presentation: 'card' }} />
           <Stack.Screen name="cooking/[id]" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="plan/[weekStart]" options={{ presentation: 'card' }} />
           <Stack.Screen name="collection/[id]" options={{ presentation: 'card' }} />
           <Stack.Screen name="feed/[id]" options={{ presentation: 'card' }} />
           <Stack.Screen name="auth/callback" />

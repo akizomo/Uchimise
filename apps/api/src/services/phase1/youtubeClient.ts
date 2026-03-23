@@ -112,10 +112,15 @@ export async function fetchYouTubeVideo(url: string): Promise<YouTubeVideoData> 
   // 字幕・トランスクリプトを取得（失敗しても非致命的）
   let transcript = '';
   try {
+    // ja → ja-JP → 言語指定なし の順でフォールバック
     const segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'ja' })
+      .catch(() => YoutubeTranscript.fetchTranscript(videoId, { lang: 'ja-JP' }))
       .catch(() => YoutubeTranscript.fetchTranscript(videoId));
-    transcript = segments.map((s) => s.text).join(' ');
-  } catch {
+    // 改行で結合して文章構造を保持（スペース結合だと Phase 2 が誤解析しやすい）
+    transcript = segments.map((s) => s.text).join('\n');
+    console.log(`[YouTubeClient] transcript fetched: ${transcript.length} chars, ${segments.length} segments`);
+  } catch (err) {
+    console.log(`[YouTubeClient] transcript unavailable for ${videoId}: ${(err as Error).message}`);
     // 字幕なし動画は説明文にフォールバック
   }
 
